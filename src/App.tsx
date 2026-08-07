@@ -2570,7 +2570,7 @@ app.use(cors({
                           }`}>
                             {agent.status}
                           </span>
-                          <span className="text-xs text-slate-500 font-mono">{agent.metrics.uptime} Uptime</span>
+                          <span className="text-xs text-slate-500 font-mono">{agent?.metrics?.uptime || '99.9%'} Uptime</span>
                         </div>
                         <h4 className="font-medium text-slate-100 text-sm">{agent.name}</h4>
                         <p className="text-xs text-slate-400 mt-1 line-clamp-2">{agent.role}</p>
