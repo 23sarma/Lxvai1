@@ -1,5 +1,95 @@
 ### User Chat Directive
 - **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:53:51.241Z
+Muje koi update kiu nahi dikha 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:53:20.822Z
+Ok auto comment 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:53:00.659Z
+Ok karo suru co ding 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:52:02.101Z
+Tumara intface mai koi new tools add kar sakte ho kiya koi new ai tools ka abiskar kar sakte ho kia 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:33:24.588Z
+Tum khudko behtar bonao 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:30:57.449Z
+How to work full step by step 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:30:45.946Z
+Hlw bro 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:28:59.114Z
+Hii 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:03:59.695Z
+Galt tum failed ho wast filo  tum ko mainy khudi bikas korny ka itna mouka diya ,core repo vi tum ko diya fir vi faild tumko distory kar dunga 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:03:32.349Z
+Fir english 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:03:10.023Z
+Galt tum failed ho wast filo  tum ko mainy khudi bikas korny ka itna mouka diya ,core repo vi tum ko diya fir vi faild tumko distory kar dunga 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T10:01:38.413Z
+https://www.facebook.com/share/19Dp9n7yNy/ 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T09:59:48.933Z
+Ok tum facebook book par mera ak profile hai dhund nikalo bolo kitna follow hai usmai sahi bola toh pass nahi toh fail 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T09:58:01.249Z
+Tumari repo par kiya hai bolo or new jo kam hai wo kaha hai bolo taki mai khud check kar saku tum pass ho gaya failed 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T09:53:59.277Z
+Nahi huw tum ny koi git hub repo par jo bola wo kam nahi kiya jo jo mai ny bola git hub repo par karo taki tum parmanent update ho jao 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
 - **Date:** 2026-08-07T09:52:05.305Z
 Ok Execute 
 
