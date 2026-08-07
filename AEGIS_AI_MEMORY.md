@@ -1,5 +1,23 @@
 ### User Chat Directive
 - **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T11:22:23.973Z
+Isko Lxvai1 par comit karo 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T11:21:45.404Z
+Jab vi tumri core repo par koi code ya kuch new add hoga toh mujhe ak update now ka pop up show ho jaha click kortyhi tum new code or file k sath update ho jaogi 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
+- **Date:** 2026-08-07T11:19:52.657Z
+Auto refas kam pura karo 
+
+
+### User Chat Directive
+- **Tags:** UserInstruction, PerpetualMemory, NeverForget
 - **Date:** 2026-08-07T11:18:45.513Z
 Kya ab aapko screen par woh status indicator aur update reflection dikhayi de raha hai?* Ah kah dekygi 
 
