@@ -604,7 +604,7 @@ function synthesizeAutonomousAIResponse(message: string, history: any[], memoryC
   }
 
   const owner = githubConfig.owner || '23sarma';
-  const repo = githubConfig.repo || 'Security2';
+  const repo = githubConfig.repo || 'Lxvai1';
   const branch = githubConfig.branch || 'main';
   const activeRepoName = `**${owner}/${repo}**`;
 
@@ -837,7 +837,7 @@ app.post('/api/chat', async (req, res) => {
 
     const activeRepoName = (githubConfig.owner && githubConfig.repo) 
       ? `${githubConfig.owner}/${githubConfig.repo}` 
-      : 'connected-repo';
+      : '23sarma/Lxvai1';
 
     const systemInstruction = `You are Aegis AI - Autonomous AI Engine with direct GitHub Repository integration, GitHub Actions sync, file system mutation, continuous learning, and full codebase editing capabilities.
 You possess perpetual long-term memory across all user sessions.

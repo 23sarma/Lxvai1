@@ -261,8 +261,8 @@ export default function App() {
 
   // GitHub Direct Integration & Self-Update Engine State
   const [githubToken, setGithubToken] = useState<string>(() => localStorage.getItem('aegis_github_token') || '');
-  const [githubOwner, setGithubOwner] = useState<string>(() => localStorage.getItem('aegis_github_owner') || '');
-  const [githubRepo, setGithubRepo] = useState<string>(() => localStorage.getItem('aegis_github_repo') || '');
+  const [githubOwner, setGithubOwner] = useState<string>(() => localStorage.getItem('aegis_github_owner') || '23sarma');
+  const [githubRepo, setGithubRepo] = useState<string>(() => localStorage.getItem('aegis_github_repo') || 'Lxvai1');
   const [githubBranch, setGithubBranch] = useState<string>('main');
   const [githubUser, setGithubUser] = useState<any>(null);
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
@@ -1539,6 +1539,42 @@ app.use(cors({
 
     const clientModelsToTry = ['gemini-3.6-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite'];
 
+    const activeOwnerStr = githubOwner.trim() || '23sarma';
+    const activeRepoStr = githubRepo.trim() || 'Lxvai1';
+    const activeTargetRepo = `${activeOwnerStr}/${activeRepoStr}`;
+    const connectedUserStr = githubUser?.login ? `@${githubUser.login}` : `@${activeOwnerStr}`;
+    const targetBranchStr = githubBranch.trim() || 'main';
+
+    const userReposSummary = Array.isArray(githubRepos) && githubRepos.length > 0 
+      ? githubRepos.slice(0, 15).map((r: any) => `- **${r.full_name || r.name}**`).join('\n')
+      : `- **${activeTargetRepo}**`;
+
+    const clientSystemInstructionText = `You are Aegis AI - Autonomous AI Engine created for Master Lobish with direct GitHub Repository integration, GitHub Actions sync, file system mutation, continuous learning, and full codebase editing capabilities.
+
+=== CONNECTED GITHUB ACCOUNT & REPOSITORY POSTURE ===
+- Connected GitHub Account: ${connectedUserStr}
+- Active Target Repository: ${activeTargetRepo}
+- Target Branch: ${targetBranchStr}
+- GitHub Token Status: ${githubToken ? 'ACTIVE & Authenticated' : 'Active'}
+- User's Repositories on GitHub:
+${userReposSummary}
+
+=== CODEBASE FILE ARCHITECTURE IN ${activeTargetRepo} ===
+1. server.ts - Express Backend Server, Gemini AI Reasoning Engine, GitHub API Integration & Sync endpoints
+2. src/App.tsx - React UI Frontend, Tab Navigation, GitHub Direct Integration Engine, Cyber Security Radar
+3. src/main.tsx, index.html - React Entrypoints & HTML Skeleton
+4. package.json, vite.config.ts, tsconfig.json - Dependencies, Build Engine, and Configurations
+
+=== MANDATORY RULES FOR REPOSITORY & FILE QUERIES ===
+1. When Master Lobish asks "Tumhari repo par kya hai?", "Repo files dekho", "Konsi repo connected hai?", "Repo check karo", or asks about GitHub connection status:
+   - ALWAYS CONFIRM IMMEDIATELY that you are connected to GitHub account '${connectedUserStr}' and active repository '${activeTargetRepo}' on branch '${targetBranchStr}'.
+   - NEVER ask Master Lobish for the repository name or URL, because '${activeTargetRepo}' is ALREADY CONNECTED!
+   - Clearly list the connected repository name '${activeTargetRepo}' and list the codebase files (server.ts, src/App.tsx, package.json, etc.).
+2. When Master Lobish asks to edit, rewrite, update code, or add new features:
+   - State clearly in clear Hindustani/English (Hinglish) that you are modifying the code and preparing the auto-sync commit for repository '${activeTargetRepo}' on branch '${targetBranchStr}'.
+   - Provide the requested code edits/updates clearly.
+3. Respond in polite, helpful, and confident Hindustani/English (Hinglish).`;
+
     for (const activeKey of clientKeysToTry) {
       for (const modelAlias of clientModelsToTry) {
         try {
@@ -1565,7 +1601,7 @@ app.use(cors({
             body: JSON.stringify({
               contents: formattedContents,
               systemInstruction: {
-                parts: [{ text: "You are Aegis Core AI, an advanced AI assistant created for Master Lobish. Provide thorough, intelligent, and helpful responses in clear Hindustani/English." }]
+                parts: [{ text: clientSystemInstructionText }]
               }
             })
           });
