@@ -1476,9 +1476,9 @@ app.use(cors({
     // Auto-index User Instruction into Long-Term Memory Bank so it is NEVER forgotten
     const autoMemoryEntry: MemoryVector = {
       id: `mem-user-${Date.now()}`,
-      query: `User Chat Directive${currentAttachments.length > 0 ? ` [Attached ${currentAttachments.length} file(s)]` : ''}`,
-      response: `${currentPrompt} ${currentAttachments.map(a => `[File: ${a.name}]`).join(' ')}`,
-      tags: ['UserInstruction', 'PerpetualMemory', 'NeverForget', ...(currentAttachments.length > 0 ? ['FileAttachment'] : [])],
+      query: currentPrompt.length > 80 ? `${currentPrompt.slice(0, 80)}...` : currentPrompt,
+      response: `User Instruction: ${currentPrompt}${currentAttachments.length > 0 ? `\nAttached files: ${currentAttachments.map(a => a.name).join(', ')}` : ''}`,
+      tags: ['UserInstruction', 'ChatMemory', ...(currentAttachments.length > 0 ? ['FileAttachment'] : [])],
       createdAt: new Date().toISOString()
     };
     setMemoryList(prev => [autoMemoryEntry, ...prev]);
@@ -1570,9 +1570,10 @@ ${userReposSummary}
    - ALWAYS CONFIRM IMMEDIATELY that you are connected to GitHub account '${connectedUserStr}' and active repository '${activeTargetRepo}' on branch '${targetBranchStr}'.
    - NEVER ask Master Lobish for the repository name or URL, because '${activeTargetRepo}' is ALREADY CONNECTED!
    - Clearly list the connected repository name '${activeTargetRepo}' and list the codebase files (server.ts, src/App.tsx, package.json, etc.).
-2. When Master Lobish asks to edit, rewrite, update code, or add new features:
-   - State clearly in clear Hindustani/English (Hinglish) that you are modifying the code and preparing the auto-sync commit for repository '${activeTargetRepo}' on branch '${targetBranchStr}'.
-   - Provide the requested code edits/updates clearly.
+2. When Master Lobish asks to commit/push to GitHub or build features:
+   - Explain that you understand the request for repository '${activeTargetRepo}' on branch '${targetBranchStr}'.
+   - Explain that code changes are updated in the workspace and can be pushed directly using the "🚀 Push Code & Neural Memory directly to GitHub" button in the Deploy/GitHub tab or via automated sync.
+   - Do NOT dump raw conversation memory logs into commits unless specifically instructed to sync memories.
 3. Respond in polite, helpful, and confident Hindustani/English (Hinglish).`;
 
     for (const activeKey of clientKeysToTry) {
