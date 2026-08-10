@@ -2362,6 +2362,98 @@ ${userReposSummary}
         </div>
       </header>
 
+      {/* Mobile Horizontal Category Sub-Nav Bar (Visible on mobile/tablet screens < lg) */}
+      <div className="flex lg:hidden overflow-x-auto bg-slate-900/90 border-b border-slate-800 px-3 py-2 space-x-2 text-xs shrink-0 no-scrollbar sticky top-[61px] z-30 shadow-md">
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`px-3 py-1.5 rounded-lg font-bold shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'chat'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-md'
+              : 'text-cyan-400 bg-cyan-950/40 border border-cyan-500/30'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5" />
+          <span>AI Studio Chat</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'dashboard'
+              ? 'bg-cyan-500 text-slate-950 font-bold'
+              : 'text-slate-300 bg-slate-950/60 border border-slate-800'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>Overview</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('scanner')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'scanner'
+              ? 'bg-cyan-500 text-slate-950 font-bold'
+              : 'text-slate-300 bg-slate-950/60 border border-slate-800'
+          }`}
+        >
+          <ShieldAlert className="w-3.5 h-3.5" />
+          <span>Audit Scanner</span>
+        </button>
+        <button
+          onClick={() => { setActiveTab('darkweb'); fetchDarkWebThreats(); }}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'darkweb'
+              ? 'bg-rose-500 text-white font-bold'
+              : 'text-rose-400 bg-rose-950/40 border border-rose-500/30'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5" />
+          <span>Dark Web</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('github')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'github'
+              ? 'bg-purple-600 text-white font-bold'
+              : 'text-purple-400 bg-purple-950/40 border border-purple-500/30'
+          }`}
+        >
+          <Github className="w-3.5 h-3.5" />
+          <span>GitHub Sync</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('deployment')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'deployment'
+              ? 'bg-emerald-400 text-slate-950 font-bold'
+              : 'text-emerald-400 bg-emerald-950/40 border border-emerald-500/30'
+          }`}
+        >
+          <Rocket className="w-3.5 h-3.5" />
+          <span>Run & Deploy</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('google')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'google'
+              ? 'bg-indigo-500 text-white font-bold'
+              : 'text-indigo-400 bg-indigo-950/40 border border-indigo-500/30'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5" />
+          <span>System Hub</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('agents')}
+          className={`px-3 py-1.5 rounded-lg font-medium shrink-0 flex items-center space-x-1.5 transition-all ${
+            activeTab === 'agents'
+              ? 'bg-cyan-500 text-slate-950 font-bold'
+              : 'text-slate-300 bg-slate-950/60 border border-slate-800'
+          }`}
+        >
+          <Cpu className="w-3.5 h-3.5" />
+          <span>Agents</span>
+        </button>
+      </div>
+
       {/* Hamburger Drawer Sidebar Overlay */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-50 flex">
@@ -2693,7 +2785,7 @@ ${userReposSummary}
       {/* Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left / Main Workspace Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 lg:pb-6 bg-slate-950 space-y-4">
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 pb-20 lg:pb-6 bg-slate-950 space-y-4">
           {/* Floating GitHub Repo Auto-Update Popup Banner */}
           {hasGithubUpdate && (
             <div className="bg-gradient-to-r from-purple-950/90 via-slate-900 to-indigo-950/90 border border-purple-500/50 p-4 rounded-2xl shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs max-w-7xl mx-auto transition-all animate-pulse">
@@ -2750,31 +2842,31 @@ ${userReposSummary}
 
           {/* TAB 0: PRIMARY AI CHAT STUDIO (MAIN CHAT-FIRST INTERFACE) */}
           {activeTab === 'chat' && (
-            <div className="max-w-5xl mx-auto h-[calc(100vh-100px)] flex flex-col bg-white border border-slate-300 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="max-w-5xl mx-auto h-[calc(100dvh-130px)] sm:h-[calc(100vh-100px)] flex flex-col bg-white border border-slate-300 rounded-2xl overflow-hidden shadow-2xl">
               {/* Chat Header */}
-              <div className="px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between shrink-0">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl text-white font-bold shadow-md">
-                    <Bot className="w-5 h-5 text-white" />
+              <div className="px-3 sm:px-5 py-2.5 sm:py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between shrink-0 gap-2">
+                <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
+                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl text-white font-bold shadow-md shrink-0">
+                    <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <h2 className="font-extrabold text-slate-900 text-base">Aegis AI Autonomous Studio</h2>
-                      <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold flex items-center space-x-1">
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap">
+                      <h2 className="font-extrabold text-slate-900 text-sm sm:text-base truncate">Aegis AI Studio</h2>
+                      <span className="text-[9px] sm:text-[10px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center space-x-1 shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                        <span>AUTONOMOUS BUILDER ONLINE</span>
+                        <span>ONLINE</span>
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 font-medium font-mono">
-                      Ask anything • Create GitHub Repos • Build Apps & Software • Auto-Push Code
+                    <p className="text-[10px] sm:text-xs text-slate-600 font-medium font-mono truncate hidden sm:block">
+                      Ask anything • Create GitHub Repos • Build Software • Auto-Push
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
                   <button
                     onClick={() => setActiveTab('github')}
-                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 rounded-xl text-xs font-mono font-bold transition-all flex items-center space-x-1.5 shadow-sm"
+                    className="px-2.5 sm:px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 rounded-xl text-[11px] sm:text-xs font-mono font-bold transition-all flex items-center space-x-1 sm:space-x-1.5 shadow-sm"
                     title="GitHub Settings"
                   >
                     <Github className="w-3.5 h-3.5 text-purple-700" />
@@ -2782,7 +2874,7 @@ ${userReposSummary}
                   </button>
                   <button
                     onClick={handleClearChat}
-                    className="p-2 text-slate-500 hover:text-rose-600 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors shadow-sm"
+                    className="p-1.5 sm:p-2 text-slate-500 hover:text-rose-600 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors shadow-sm"
                     title="Clear Conversation"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -2949,20 +3041,11 @@ ${userReposSummary}
                   </div>
                 )}
 
-                <form onSubmit={handleSendChat} className="space-y-2.5">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl border border-slate-300 transition-colors shrink-0 self-start sm:self-end flex items-center justify-center shadow-sm"
-                      title="Attach Code / Files"
-                    >
-                      <Paperclip className="w-5 h-5" />
-                    </button>
-
-                    <div className="relative flex-1 flex flex-col">
+                <form onSubmit={handleSendChat} className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
+                    <div className="relative flex-1 flex flex-col min-w-0">
                       <textarea
-                        rows={3}
+                        rows={2}
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={e => {
@@ -2971,13 +3054,14 @@ ${userReposSummary}
                             handleSendChat(e);
                           }
                         }}
-                        placeholder="Type your prompt here... Press Enter for new line / paragraph. Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write code'..."
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/30 font-mono shadow-inner min-h-[90px] resize-y font-bold"
+                        placeholder="Type your prompt here... Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write code'..."
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/30 font-mono shadow-inner min-h-[65px] sm:min-h-[90px] resize-y font-bold"
                       />
-                      <div className="flex items-center justify-between pt-1.5 px-1 text-[10px] font-mono text-slate-600">
-                        <span className="flex items-center space-x-1">
+                      <div className="flex items-center justify-between pt-1 px-1 text-[10px] font-mono text-slate-600">
+                        <span className="flex items-center space-x-1 truncate">
                           <span className="text-cyan-700 font-bold">💡 Tip:</span>
-                          <span>Press <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800 font-bold">Enter</kbd> for new paragraph • <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800 font-bold">Ctrl + Enter</kbd> or click Send to submit</span>
+                          <span className="hidden sm:inline">Press Enter for new line • Ctrl + Enter or click Send to submit</span>
+                          <span className="sm:hidden">Press Enter for new line</span>
                         </span>
                         <span className="text-slate-500 font-bold hidden md:inline">
                           {chatInput.length} chars
@@ -2985,14 +3069,26 @@ ${userReposSummary}
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
-                      className="px-5 py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl transition-all flex items-center justify-center space-x-2 shrink-0 disabled:opacity-40 shadow-lg shadow-cyan-600/20 self-stretch sm:self-end h-[90px]"
-                    >
-                      <Send className="w-4 h-4" />
-                      <span className="text-xs font-extrabold">Send Prompt</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl border border-slate-300 transition-colors flex-1 sm:flex-none flex items-center justify-center shadow-sm h-11 sm:h-[90px]"
+                        title="Attach Code / Files"
+                      >
+                        <Paperclip className="w-5 h-5" />
+                        <span className="text-xs font-bold ml-1.5 sm:hidden">Attach</span>
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
+                        className="px-5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl transition-all flex items-center justify-center space-x-2 flex-[2] sm:flex-none disabled:opacity-40 shadow-lg shadow-cyan-600/20 h-11 sm:h-[90px]"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span className="text-xs font-extrabold">Send Prompt</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Shortcut Prompt Pills */}
