@@ -1334,31 +1334,39 @@ export default function App() {
   }, []);
 
   const scrollToBottom = (smooth = true) => {
-    setTimeout(() => {
+    const doScroll = () => {
       if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTo({
-          top: chatContainerRef.current.scrollHeight,
-          behavior: smooth ? 'smooth' : 'auto'
-        });
+        const el = chatContainerRef.current;
+        if (smooth) {
+          try {
+            el.scrollTo({
+              top: el.scrollHeight,
+              behavior: 'smooth'
+            });
+          } catch (e) {
+            el.scrollTop = el.scrollHeight;
+          }
+        } else {
+          el.scrollTop = el.scrollHeight;
+        }
       }
-      if (mobileChatContainerRef.current) {
-        mobileChatContainerRef.current.scrollTo({
-          top: mobileChatContainerRef.current.scrollHeight,
-          behavior: smooth ? 'smooth' : 'auto'
-        });
-      }
-      chatBottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
-      mobileChatBottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
-    }, 60);
+    };
+
+    doScroll();
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 40);
+    setTimeout(doScroll, 120);
+    setTimeout(doScroll, 300);
+    setTimeout(doScroll, 600);
   };
 
   useEffect(() => {
     scrollToBottom(true);
-  }, [messages, isChatLoading, isMobileChatOpen]);
+  }, [messages, isChatLoading, isMobileChatOpen, activeTab]);
 
   const handleChatScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 120;
+    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 60;
     setShowScrollBottomBtn(isScrolledUp);
   };
 
@@ -2653,22 +2661,22 @@ ${userReposSummary}
 
           {/* TAB 0: PRIMARY AI CHAT STUDIO (MAIN CHAT-FIRST INTERFACE) */}
           {activeTab === 'chat' && (
-            <div className="max-w-5xl mx-auto h-[calc(100vh-100px)] flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="max-w-5xl mx-auto h-[calc(100vh-100px)] flex flex-col bg-white border border-slate-300 rounded-2xl overflow-hidden shadow-2xl">
               {/* Chat Header */}
-              <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <div className="px-5 py-3.5 bg-slate-100/90 border-b border-slate-200 flex items-center justify-between shrink-0">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
-                    <Bot className="w-5 h-5 text-slate-950" />
+                  <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-xl text-white font-bold shadow-md">
+                    <Bot className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <h2 className="font-bold text-white text-base">Aegis AI Autonomous Studio</h2>
-                      <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center space-x-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <h2 className="font-extrabold text-slate-900 text-base">Aegis AI Autonomous Studio</h2>
+                      <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold flex items-center space-x-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
                         <span>AUTONOMOUS BUILDER ONLINE</span>
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400 font-mono">
+                    <p className="text-xs text-slate-600 font-medium font-mono">
                       Ask anything • Create GitHub Repos • Build Apps & Software • Auto-Push Code
                     </p>
                   </div>
@@ -2677,15 +2685,15 @@ ${userReposSummary}
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setActiveTab('github')}
-                    className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-mono font-medium transition-all flex items-center space-x-1.5"
+                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 rounded-xl text-xs font-mono font-bold transition-all flex items-center space-x-1.5 shadow-sm"
                     title="GitHub Settings"
                   >
-                    <Github className="w-3.5 h-3.5 text-purple-400" />
+                    <Github className="w-3.5 h-3.5 text-purple-700" />
                     <span className="hidden sm:inline">Repo: {githubOwner}/{githubRepo}</span>
                   </button>
                   <button
                     onClick={handleClearChat}
-                    className="p-2 text-slate-400 hover:text-rose-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors"
+                    className="p-2 text-slate-500 hover:text-rose-600 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors shadow-sm"
                     title="Clear Conversation"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -2694,7 +2702,17 @@ ${userReposSummary}
               </div>
 
               {/* Chat Messages Body */}
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/50">
+              <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/80 relative">
+                {/* Floating Jump to Bottom Button */}
+                {showScrollBottomBtn && (
+                  <button
+                    onClick={() => scrollToBottom(true)}
+                    className="sticky top-2 ml-auto z-20 px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs rounded-full shadow-xl transition-all flex items-center space-x-1.5 border border-cyan-400 w-fit cursor-pointer"
+                  >
+                    <ChevronDown className="w-4 h-4 text-white" />
+                    <span>Scroll to Latest</span>
+                  </button>
+                )}
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -2703,50 +2721,57 @@ ${userReposSummary}
                     <div
                       className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
                         msg.sender === 'user'
-                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold text-xs'
+                          ? 'bg-cyan-600 text-white border-cyan-500 font-bold text-xs shadow-sm'
                           : msg.sender === 'system'
-                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-                          : 'bg-slate-800 text-cyan-400 border-slate-700'
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : 'bg-slate-900 text-cyan-400 border-slate-700 shadow-sm'
                       }`}
                     >
                       {msg.sender === 'user' ? 'YOU' : <Bot className="w-4 h-4" />}
                     </div>
 
                     <div
-                      className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 text-xs font-mono leading-relaxed space-y-2 shadow-xl ${
+                      className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 text-xs font-mono leading-relaxed space-y-2 shadow-md ${
                         msg.sender === 'user'
                           ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-tr-none'
                           : msg.sender === 'system'
-                          ? 'bg-slate-950 border border-amber-500/30 text-amber-200 w-full'
-                          : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none'
+                          ? 'bg-amber-50 border border-amber-300 text-amber-950 w-full font-medium'
+                          : 'bg-white border border-slate-300 text-slate-900 rounded-tl-none font-semibold shadow-sm'
                       }`}
                     >
                       {msg.agentName && (
-                        <div className="flex items-center justify-between text-[10px] text-cyan-400 border-b border-slate-800/80 pb-1.5 mb-1.5 font-bold">
+                        <div className="flex items-center justify-between text-[10px] text-cyan-800 border-b border-slate-200 pb-1.5 mb-1.5 font-bold">
                           <span>{msg.agentName}</span>
                           <span className="text-slate-500 font-normal">{msg.timestamp}</span>
                         </div>
                       )}
 
-                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                      <p className={`whitespace-pre-wrap leading-relaxed ${msg.sender === 'user' ? 'text-white font-medium' : 'text-slate-900 font-semibold'}`}>
+                        {msg.content}
+                      </p>
 
                       {/* Render Message Attachments */}
                       {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="mt-2.5 pt-2 border-t border-cyan-400/30 space-y-2">
-                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-200">
+                        <div className={`mt-2.5 pt-2 border-t ${msg.sender === 'user' ? 'border-cyan-400/30' : 'border-slate-200'} space-y-2`}>
+                          <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${msg.sender === 'user' ? 'text-cyan-100' : 'text-slate-700'}`}>
                             Attached Files ({msg.attachments.length}):
                           </span>
                           <div className="flex flex-wrap gap-1.5">
                             {msg.attachments.map(att => (
-                              <div key={att.id} className="bg-slate-950/90 border border-slate-800 p-1.5 rounded-lg flex items-center space-x-2 text-[10px]">
+                              <div
+                                key={att.id}
+                                className={`p-1.5 rounded-lg flex items-center space-x-2 text-[10px] border ${
+                                  msg.sender === 'user' ? 'bg-cyan-800/80 border-cyan-500/50 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
+                                }`}
+                              >
                                 {att.type?.startsWith('image/') && att.dataUrl ? (
-                                  <img src={att.dataUrl} alt={att.name} className="w-7 h-7 rounded object-cover border border-slate-700" />
+                                  <img src={att.dataUrl} alt={att.name} className="w-7 h-7 rounded object-cover border border-slate-300" />
                                 ) : (
-                                  <FileCode className="w-4 h-4 text-cyan-400 shrink-0" />
+                                  <FileCode className={`w-4 h-4 shrink-0 ${msg.sender === 'user' ? 'text-cyan-200' : 'text-cyan-700'}`} />
                                 )}
                                 <div className="truncate max-w-[120px]">
-                                  <p className="font-semibold truncate text-slate-100">{att.name}</p>
-                                  <p className="text-[8px] text-slate-400 font-mono">{(att.size / 1024).toFixed(1)} KB</p>
+                                  <p className="font-bold truncate">{att.name}</p>
+                                  <p className="text-[8px] opacity-80 font-mono">{(att.size / 1024).toFixed(1)} KB</p>
                                 </div>
                               </div>
                             ))}
@@ -2756,7 +2781,7 @@ ${userReposSummary}
 
                       {/* Render Chat Interactive Action Buttons */}
                       {msg.actionButtons && msg.actionButtons.length > 0 && (
-                        <div className="mt-2.5 pt-2 border-t border-slate-800 flex flex-wrap gap-2">
+                        <div className="mt-2.5 pt-2 border-t border-slate-200 flex flex-wrap gap-2">
                           {msg.actionButtons.map((btn, bIdx) => (
                             <button
                               key={bIdx}
@@ -2769,8 +2794,8 @@ ${userReposSummary}
                               }}
                               className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center space-x-1.5 cursor-pointer shadow-md ${
                                 btn.action === 'hitl_approve'
-                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 hover:from-emerald-400 hover:to-teal-400'
-                                  : 'bg-slate-800 text-rose-300 border border-slate-700 hover:bg-slate-700'
+                                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                                  : 'bg-slate-100 text-rose-700 border border-slate-300 hover:bg-slate-200'
                               }`}
                             >
                               <span>{btn.label}</span>
@@ -2780,27 +2805,27 @@ ${userReposSummary}
                       )}
 
                       {/* 1-Click Copy Message Footer Bar */}
-                      <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                        <span className="text-[9px] text-slate-400 opacity-80">1-Click Copy</span>
+                      <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-[10px] font-mono ${msg.sender === 'user' ? 'border-cyan-400/30 text-cyan-100' : 'border-slate-200 text-slate-600'}`}>
+                        <span className="text-[9px] opacity-80">1-Click Copy</span>
                         <button
                           type="button"
                           onClick={() => handleCopyMessage(msg.id, msg.content)}
                           className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-all flex items-center space-x-1.5 shadow-sm ${
                             copiedMessageId === msg.id
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                               : msg.sender === 'user'
-                              ? 'bg-cyan-700/60 text-white border-cyan-400/40 hover:bg-cyan-700'
-                              : 'bg-slate-900/90 text-cyan-300 border-slate-700 hover:bg-slate-800 hover:border-cyan-500/50'
+                              ? 'bg-cyan-700 text-white border-cyan-400 hover:bg-cyan-800'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border-slate-300'
                           }`}
                         >
                           {copiedMessageId === msg.id ? (
                             <>
-                              <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <Check className="w-3 h-3 text-emerald-600 shrink-0" />
                               <span>Copied!</span>
                             </>
                           ) : (
                             <>
-                              <Copy className="w-3 h-3 text-cyan-400 shrink-0" />
+                              <Copy className={`w-3 h-3 shrink-0 ${msg.sender === 'user' ? 'text-white' : 'text-cyan-700'}`} />
                               <span>Copy Message</span>
                             </>
                           )}
@@ -2810,8 +2835,8 @@ ${userReposSummary}
                   </div>
                 ))}
                 {isChatLoading && (
-                  <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono bg-slate-950 p-3 rounded-xl border border-slate-800 w-fit">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  <div className="flex items-center space-x-2 text-xs text-slate-800 font-bold font-mono bg-white p-3.5 rounded-xl border border-slate-300 w-fit shadow-md">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-600" />
                     <span>Aegis AI building, creating repos & reasoning in progress...</span>
                   </div>
                 )}
@@ -2819,15 +2844,15 @@ ${userReposSummary}
               </div>
 
               {/* Chat Input Form Area */}
-              <div className="bg-slate-950 border-t border-slate-800 p-4 space-y-3">
+              <div className="bg-white border-t border-slate-200 p-4 space-y-3 shrink-0">
                 {/* Attached Files Preview Bar */}
                 {attachedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pb-2">
                     {attachedFiles.map(att => (
-                      <div key={att.id} className="bg-slate-900 border border-slate-700/70 text-slate-200 text-[10px] pl-2 pr-1 py-1 rounded-md flex items-center space-x-1.5">
-                        <Paperclip className="w-3 h-3 text-slate-400 shrink-0" />
+                      <div key={att.id} className="bg-slate-100 border border-slate-300 text-slate-900 text-[10px] pl-2 pr-1 py-1 rounded-md flex items-center space-x-1.5 font-bold shadow-sm">
+                        <Paperclip className="w-3 h-3 text-slate-600 shrink-0" />
                         <span className="truncate max-w-[120px]">{att.name}</span>
-                        <button type="button" onClick={() => handleRemoveFile(att.id)} className="text-slate-400 hover:text-red-400 p-0.5">
+                        <button type="button" onClick={() => handleRemoveFile(att.id)} className="text-slate-500 hover:text-red-600 p-0.5">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -2836,55 +2861,72 @@ ${userReposSummary}
                 )}
 
                 <form onSubmit={handleSendChat} className="space-y-2.5">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2.5">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-3 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 rounded-xl border border-slate-800 transition-colors shrink-0"
+                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl border border-slate-300 transition-colors shrink-0 self-start sm:self-end flex items-center justify-center shadow-sm"
                       title="Attach Code / Files"
                     >
-                      <Paperclip className="w-4 h-4" />
+                      <Paperclip className="w-5 h-5" />
                     </button>
 
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
+                    <div className="relative flex-1 flex flex-col">
+                      <textarea
+                        rows={3}
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
-                        placeholder="Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write app code'..."
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-12 py-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono shadow-inner"
+                        onKeyDown={e => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSendChat(e);
+                          }
+                        }}
+                        placeholder="Type your prompt here... Press Enter for new line / paragraph. Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write code'..."
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3.5 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/30 font-mono shadow-inner min-h-[90px] resize-y font-bold"
                       />
-                      <button
-                        type="submit"
-                        disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
-                        className="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center space-x-1.5 disabled:opacity-40"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-between pt-1.5 px-1 text-[10px] font-mono text-slate-600">
+                        <span className="flex items-center space-x-1">
+                          <span className="text-cyan-700 font-bold">💡 Tip:</span>
+                          <span>Press <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800 font-bold">Enter</kbd> for new paragraph • <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-slate-800 font-bold">Ctrl + Enter</kbd> or click Send to submit</span>
+                        </span>
+                        <span className="text-slate-500 font-bold hidden md:inline">
+                          {chatInput.length} chars
+                        </span>
+                      </div>
                     </div>
+
+                    <button
+                      type="submit"
+                      disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
+                      className="px-5 py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl transition-all flex items-center justify-center space-x-2 shrink-0 disabled:opacity-40 shadow-lg shadow-cyan-600/20 self-stretch sm:self-end h-[90px]"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span className="text-xs font-extrabold">Send Prompt</span>
+                    </button>
                   </div>
 
                   {/* Shortcut Prompt Pills */}
-                  <div className="flex items-center space-x-2 text-[10px] font-mono text-slate-400 overflow-x-auto pb-1">
-                    <span className="text-slate-500 shrink-0">Quick Commands:</span>
+                  <div className="flex items-center space-x-2 text-[10px] font-mono text-slate-600 overflow-x-auto pb-1">
+                    <span className="text-slate-500 shrink-0 font-bold">Quick Commands:</span>
                     <button
                       type="button"
                       onClick={() => setChatInput('Create a new GitHub repo named "ai-smart-app" and build README and main files')}
-                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-cyan-300 hover:border-cyan-500/40"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg shrink-0 text-cyan-800 hover:border-cyan-600 font-bold shadow-sm"
                     >
                       🐙 Create Repo & Files
                     </button>
                     <button
                       type="button"
                       onClick={() => setChatInput('Build an automated Python & React full-stack app with Google Studio features')}
-                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-indigo-300 hover:border-indigo-500/40"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg shrink-0 text-indigo-800 hover:border-indigo-600 font-bold shadow-sm"
                     >
                       ⚡ Build Full-Stack App
                     </button>
                     <button
                       type="button"
                       onClick={() => setChatInput('Automatically rewrite code and push updates directly to main branch')}
-                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-purple-300 hover:border-purple-500/40"
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg shrink-0 text-purple-800 hover:border-purple-600 font-bold shadow-sm"
                     >
                       🚀 Auto Push Code
                     </button>
