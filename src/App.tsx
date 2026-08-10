@@ -130,9 +130,11 @@ export default function App() {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const mainChatBottomRef = useRef<HTMLDivElement>(null);
+  const sidebarChatBottomRef = useRef<HTMLDivElement>(null);
   const mobileChatBottomRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const mainChatContainerRef = useRef<HTMLDivElement>(null);
+  const sidebarChatContainerRef = useRef<HTMLDivElement>(null);
   const mobileChatContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
@@ -1334,30 +1336,45 @@ export default function App() {
   }, []);
 
   const scrollToBottom = (smooth = false) => {
-    const el = chatContainerRef.current;
-    if (el) {
-      if (smooth) {
-        try {
-          el.scrollTo({
-            top: el.scrollHeight + 10000,
-            behavior: 'smooth'
-          });
-        } catch (e) {
+    const containers = [
+      mainChatContainerRef.current,
+      sidebarChatContainerRef.current,
+      mobileChatContainerRef.current
+    ];
+
+    containers.forEach(el => {
+      if (el) {
+        if (smooth) {
+          try {
+            el.scrollTo({
+              top: el.scrollHeight + 10000,
+              behavior: 'smooth'
+            });
+          } catch (e) {
+            el.scrollTop = el.scrollHeight + 10000;
+          }
+        } else {
           el.scrollTop = el.scrollHeight + 10000;
         }
-      } else {
-        el.scrollTop = el.scrollHeight + 10000;
       }
-    }
+    });
 
-    if (chatBottomRef.current) {
-      try {
-        chatBottomRef.current.scrollIntoView({
-          behavior: smooth ? 'smooth' : 'auto',
-          block: 'end'
-        });
-      } catch (e) {}
-    }
+    const bottoms = [
+      mainChatBottomRef.current,
+      sidebarChatBottomRef.current,
+      mobileChatBottomRef.current
+    ];
+
+    bottoms.forEach(bot => {
+      if (bot) {
+        try {
+          bot.scrollIntoView({
+            behavior: smooth ? 'smooth' : 'instant',
+            block: 'end'
+          });
+        } catch (e) {}
+      }
+    });
   };
 
   useLayoutEffect(() => {
@@ -1366,8 +1383,8 @@ export default function App() {
       scrollToBottom(false);
       requestAnimationFrame(() => scrollToBottom(false));
     });
-    const t1 = setTimeout(() => scrollToBottom(false), 50);
-    const t2 = setTimeout(() => scrollToBottom(false), 150);
+    const t1 = setTimeout(() => scrollToBottom(false), 30);
+    const t2 = setTimeout(() => scrollToBottom(false), 120);
     const t3 = setTimeout(() => scrollToBottom(false), 300);
     const t4 = setTimeout(() => scrollToBottom(false), 600);
     return () => {
@@ -1380,36 +1397,50 @@ export default function App() {
   }, [messages, isChatLoading, activeTab]);
 
   useEffect(() => {
-    const el = chatContainerRef.current;
-    if (!el) return;
+    const containers = [
+      mainChatContainerRef.current,
+      sidebarChatContainerRef.current,
+      mobileChatContainerRef.current
+    ].filter((el): el is HTMLDivElement => el !== null);
+
+    if (containers.length === 0) return;
 
     const handleScrollUpdate = () => {
-      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 350;
-      if (isNearBottom || isChatLoading) {
-        el.scrollTop = el.scrollHeight + 10000;
-      }
+      containers.forEach(el => {
+        const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 450;
+        if (isNearBottom || isChatLoading) {
+          el.scrollTop = el.scrollHeight + 10000;
+        }
+      });
     };
 
-    const mutationObserver = new MutationObserver(handleScrollUpdate);
-    mutationObserver.observe(el, { childList: true, subtree: true, characterData: true });
+    const mutationObservers: MutationObserver[] = [];
+    const resizeObservers: ResizeObserver[] = [];
 
-    const resizeObserver = new ResizeObserver(handleScrollUpdate);
-    resizeObserver.observe(el);
-    Array.from(el.children).forEach(child => {
-      if (child instanceof Element) {
-        resizeObserver.observe(child);
-      }
+    containers.forEach(el => {
+      const mObs = new MutationObserver(handleScrollUpdate);
+      mObs.observe(el, { childList: true, subtree: true, characterData: true });
+      mutationObservers.push(mObs);
+
+      const rObs = new ResizeObserver(handleScrollUpdate);
+      rObs.observe(el);
+      Array.from(el.children).forEach(child => {
+        if (child instanceof Element) {
+          rObs.observe(child);
+        }
+      });
+      resizeObservers.push(rObs);
     });
 
     return () => {
-      mutationObserver.disconnect();
-      resizeObserver.disconnect();
+      mutationObservers.forEach(o => o.disconnect());
+      resizeObservers.forEach(o => o.disconnect());
     };
-  }, [isChatLoading, messages]);
+  }, [isChatLoading, messages, activeTab]);
 
   const handleChatScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 40;
+    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 80;
     setShowScrollBottomBtn(isScrolledUp);
   };
 
@@ -2760,7 +2791,7 @@ ${userReposSummary}
               </div>
 
               {/* Chat Messages Body */}
-              <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/80 relative">
+              <div ref={mainChatContainerRef} onScroll={handleChatScroll} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-slate-50/80 relative">
                 {/* Floating Jump to Bottom Button */}
                 {showScrollBottomBtn && (
                   <button
@@ -2898,7 +2929,7 @@ ${userReposSummary}
                     <span>Aegis AI building, creating repos & reasoning in progress...</span>
                   </div>
                 )}
-                <div ref={chatBottomRef} />
+                <div ref={mainChatBottomRef} />
               </div>
 
               {/* Chat Input Form Area */}
@@ -5303,7 +5334,7 @@ ${userReposSummary}
 
           {/* Chat Messages Body */}
           <div
-            ref={chatContainerRef}
+            ref={sidebarChatContainerRef}
             onScroll={handleChatScroll}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -5457,7 +5488,7 @@ ${userReposSummary}
                 <span>Aegis reasoning in progress...</span>
               </div>
             )}
-            <div ref={chatBottomRef} />
+            <div ref={sidebarChatBottomRef} />
           </div>
 
           {/* Floating Jump to Bottom Button */}
