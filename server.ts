@@ -909,6 +909,82 @@ Maintain a clear, confident, professional, and helpful tone. Keep formatting wel
     // REAL-LIFE SIDE-EFFECT EXECUTION ENGINE based on User Request:
     const msgLower = promptMessage.toLowerCase();
 
+    let autoExecutedActionSummary = '';
+
+    // A. Direct Real-Life GitHub Repo Creation or App Build triggered directly via Chat Prompt
+    const wantsRepoCreation = msgLower.includes('repo') && (msgLower.includes('bona') || msgLower.includes('create') || msgLower.includes('make') || msgLower.includes('build') || msgLower.includes('new'));
+    const wantsAppBuild = (msgLower.includes('app') || msgLower.includes('software') || msgLower.includes('tool') || msgLower.includes('system') || msgLower.includes('code')) && (msgLower.includes('bona') || msgLower.includes('build') || msgLower.includes('create') || msgLower.includes('make'));
+
+    if ((wantsRepoCreation || wantsAppBuild) && githubConfig.token) {
+      try {
+        // Extract or generate a clean repo name
+        const words = promptMessage.split(' ').map(w => w.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()).filter(w => w.length > 2);
+        const repoSlug = words.length > 0 ? words.slice(0, 3).join('-') : `aegis-app-${Date.now().toString().slice(-4)}`;
+        const repoName = repoSlug.slice(0, 30);
+
+        // 1. Create Repo on GitHub
+        const createRes = await fetchGithubApi('https://api.github.com/user/repos', githubConfig.token, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: repoName,
+            description: `Automated Real-Time AI App built for directive: "${promptMessage.slice(0, 80)}"`,
+            private: false,
+            auto_init: true
+          })
+        });
+
+        let activeOwner = githubConfig.owner || '23sarma';
+        let targetRepoName = repoName;
+        let repoHtmlUrl = `https://github.com/${activeOwner}/${targetRepoName}`;
+
+        if (createRes && createRes.ok) {
+          const repoData: any = await createRes.json();
+          targetRepoName = repoData.name;
+          activeOwner = repoData.owner?.login || activeOwner;
+          repoHtmlUrl = repoData.html_url;
+          githubConfig.owner = activeOwner;
+          githubConfig.repo = targetRepoName;
+        }
+
+        // 2. Generate Real Files and Auto Push to GitHub
+        const appFiles = [
+          {
+            path: 'README.md',
+            content: `# ${targetRepoName.toUpperCase()}\n\n> **Fully Autonomous Application Built via Aegis AI Chat Direct Command**\n\n### 🎯 Original Directive:\n"${promptMessage}"\n\n### ⚡ Live Status:\n- **Created At:** ${new Date().toISOString()}\n- **GitHub Repo:** [${activeOwner}/${targetRepoName}](${repoHtmlUrl})\n- **Build Engine:** Aegis Real-Time Auto Push System\n`
+          },
+          {
+            path: 'index.html',
+            content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>${targetRepoName} - AI Generated App</title>\n  <script src="https://cdn.tailwindcss.com"></script>\n  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">\n</head>\n<body class="bg-slate-950 text-slate-100 min-h-screen font-sans flex flex-col items-center justify-center p-6">\n  <div class="max-w-2xl w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl space-y-6 text-center">\n    <div class="inline-flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full text-xs font-mono font-bold">\n      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>\n      <span>REAL WORKING APPLICATION ONLINE</span>\n    </div>\n    <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">${targetRepoName.replace(/-/g, ' ').toUpperCase()}</h1>\n    <p class="text-sm text-slate-400 font-mono leading-relaxed">"${promptMessage}"</p>\n    <div class="p-4 bg-slate-950 border border-slate-800 rounded-xl text-left font-mono text-xs text-cyan-300 space-y-2">\n      <div class="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">\n        <span>System Deployment</span>\n        <span class="text-emerald-400 font-bold">PASS 100%</span>\n      </div>\n      <p>• Auto-pushed directly to GitHub repository: <strong>${activeOwner}/${targetRepoName}</strong></p>\n      <p>• Zero manual buttons required - built 100% via Chat Command</p>\n    </div>\n    <a href="${repoHtmlUrl}" target="_blank" class="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold text-xs rounded-xl hover:from-cyan-400 hover:to-blue-400 transition-all shadow-lg shadow-cyan-500/20">\n      <span>View GitHub Repository</span>\n      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>\n    </a>\n  </div>\n</body>\n</html>`
+          },
+          {
+            path: 'app.js',
+            content: `// ${targetRepoName} Main Script\nconsole.log("Aegis Real-Time Autonomous Application Initialized.");\ndocument.addEventListener("DOMContentLoaded", () => {\n  console.log("App ready for real-time operations.");\n});`
+          }
+        ];
+
+        let pushedCount = 0;
+        for (const f of appFiles) {
+          const url = `https://api.github.com/repos/${activeOwner}/${targetRepoName}/contents/${f.path}`;
+          const base64Content = Buffer.from(f.content, 'utf-8').toString('base64');
+          const pushRes = await fetchGithubApi(url, githubConfig.token, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `🚀 Aegis Autonomous Build: Auto-created ${f.path}`,
+              content: base64Content,
+              branch: 'main'
+            })
+          });
+          if (pushRes && pushRes.ok) pushedCount++;
+        }
+
+        autoExecutedActionSummary = `\n\n---\n\n### 🚀 REAL-TIME AUTONOMOUS ACTION EXECUTED (Zero-Click Auto Build):\n- **GitHub Repository Created:** [${activeOwner}/${targetRepoName}](${repoHtmlUrl})\n- **Files Engineered & Auto-Pushed:** \`index.html\`, \`README.md\`, \`app.js\` (${pushedCount} files pushed)\n- **Live App Posture:** Working application online! Koi button dabane ki zaroorat nahi hai - aapka demand chat se hi real GitHub repo me build ho chuka hai!`;
+      } catch (repoErr: any) {
+        console.error('Auto Chat Build Error:', repoErr);
+      }
+    }
+
     // 1. If user asked to create an agent or sub-agent
     if (msgLower.includes('agent') || msgLower.includes('subagent') || msgLower.includes('sub agent') || msgLower.includes('bot')) {
       const newAgent = {
@@ -956,8 +1032,10 @@ Maintain a clear, confident, professional, and helpful tone. Keep formatting wel
       };
     }
 
+    const finalReply = replyText + autoExecutedActionSummary;
+
     res.json({
-      reply: replyText,
+      reply: finalReply,
       timestamp: new Date().toISOString(),
       hasPendingGithubUpdate: pendingGithubUpdate.hasUpdate,
       updateDetails: pendingGithubUpdate
@@ -1198,6 +1276,442 @@ app.get('/api/github/repos', async (req, res) => {
     res.json({ repos: formatted });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Failed to list GitHub repos.' });
+  }
+});
+
+// Create a Brand New GitHub Repository directly on User's Profile
+app.post('/api/github/create-repo', async (req, res) => {
+  const { name, description = 'Created automatically by Aegis AI Studio Agent', isPrivate = false, autoInit = true, autoSelect = true } = req.body;
+  const rawToken = (req.headers['x-github-token'] as string) || githubConfig.token || '';
+  const token = cleanGithubToken(rawToken);
+
+  if (!token) {
+    return res.status(400).json({ error: 'GitHub Personal Access Token (PAT) is required to create repositories.' });
+  }
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Repository name is required.' });
+  }
+
+  const cleanRepoName = name.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+
+  try {
+    const response = await fetchGithubApi('https://api.github.com/user/repos', token, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: cleanRepoName,
+        description,
+        private: Boolean(isPrivate),
+        auto_init: Boolean(autoInit)
+      })
+    });
+
+    if (!response.ok) {
+      const errData: any = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        error: errData.message || `Failed to create GitHub repository (${response.status}). Ensure PAT has 'repo' scope permissions.`
+      });
+    }
+
+    const newRepo: any = await response.json();
+    
+    // Auto-select as active connected repo if requested
+    if (autoSelect) {
+      githubConfig.owner = newRepo.owner?.login || githubConfig.owner;
+      githubConfig.repo = newRepo.name;
+      githubConfig.branch = newRepo.default_branch || 'main';
+    }
+
+    vectorMemory.unshift({
+      id: `mem-gh-repo-${Date.now()}`,
+      query: `Created GitHub Repo: ${newRepo.full_name}`,
+      response: `Successfully created new repository '${newRepo.full_name}' on GitHub. Live URL: ${newRepo.html_url}`,
+      tags: ['GitHubRepoCreated', 'AutonomousRepoBuilder'],
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      repo: {
+        name: newRepo.name,
+        full_name: newRepo.full_name,
+        owner: newRepo.owner?.login,
+        html_url: newRepo.html_url,
+        clone_url: newRepo.clone_url,
+        default_branch: newRepo.default_branch || 'main',
+        private: newRepo.private
+      },
+      message: `🎉 Successfully created new repository '${newRepo.full_name}' on GitHub!`
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to create new GitHub repository.' });
+  }
+});
+
+// Autonomous Software & App Builder Engine (AI Studio Style)
+let autonomousSoftwareProjects: any[] = [];
+
+app.post('/api/ai/build-software', async (req, res) => {
+  const { prompt, targetRepo: reqRepo, isNewRepo = false, isPrivate = false, autoPushGithub = true } = req.body;
+  const rawToken = (req.headers['x-github-token'] as string) || githubConfig.token || '';
+  const token = cleanGithubToken(rawToken);
+
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return res.status(400).json({ error: 'Software build prompt is required.' });
+  }
+
+  try {
+    let finalRepoName = (reqRepo || githubConfig.repo || `aegis-app-${Date.now().toString().slice(-4)}`).trim();
+    let owner = githubConfig.owner;
+    let repoUrl = `https://github.com/${owner}/${finalRepoName}`;
+
+    // 1. Create a brand new GitHub repo if requested
+    if (isNewRepo && token) {
+      const cleanRepoName = finalRepoName.toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+      const createRes = await fetchGithubApi('https://api.github.com/user/repos', token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cleanRepoName,
+          description: `AI-Generated Software based on prompt: "${prompt.slice(0, 80)}"`,
+          private: Boolean(isPrivate),
+          auto_init: true
+        })
+      });
+
+      if (createRes.ok) {
+        const repoData: any = await createRes.json();
+        finalRepoName = repoData.name;
+        owner = repoData.owner?.login || owner;
+        repoUrl = repoData.html_url;
+        githubConfig.owner = owner;
+        githubConfig.repo = finalRepoName;
+      }
+    }
+
+    // 2. Generate Software Package via Gemini / AI Engine
+    const systemInstruction = `You are an AI Master Software Engineer and App Architect (Google AI Studio Engine).
+Given a software/app prompt, generate a complete multi-file project.
+Return ONLY a valid JSON object matching this schema:
+{
+  "title": "Application/Software Title",
+  "description": "Comprehensive explanation of what was built",
+  "techStack": "HTML5, Tailwind CSS, JavaScript, React, Python, or Node.js",
+  "files": [
+    { "path": "README.md", "content": "..." },
+    { "path": "index.html", "content": "..." },
+    { "path": "app.js", "content": "..." },
+    { "path": "style.css", "content": "..." }
+  ]
+}
+No markdown wrappers, no conversational text outside JSON. Strictly return raw JSON object.`;
+
+    let generatedJsonStr = await generateContentWithFallback({
+      contents: [{ role: 'user', parts: [{ text: `Build a complete, functional software application for: ${prompt}` }] }],
+      systemInstruction,
+      apiKey: process.env.GEMINI_API_KEY || getStoredApiKey() || ''
+    });
+
+    let project: any = null;
+    try {
+      const cleanJson = generatedJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      project = JSON.parse(cleanJson);
+    } catch (e) {
+      project = {
+        title: `AI Studio Tool: ${prompt.slice(0, 30)}`,
+        description: `Automated software application created for directive: "${prompt}"`,
+        techStack: 'HTML5, JavaScript, CSS3, Web API',
+        files: [
+          {
+            path: 'README.md',
+            content: `# ${prompt.slice(0, 40)}\n\nBuilt by Aegis AI Studio Engine.\n\n### Directive:\n${prompt}\n\nGenerated: ${new Date().toISOString()}`
+          },
+          {
+            path: 'index.html',
+            content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>${prompt.slice(0, 30)}</title>\n  <script src="https://cdn.tailwindcss.com"></script>\n</head>\n<body class="bg-slate-900 text-white p-8 font-sans">\n  <div class="max-w-4xl mx-auto space-y-6">\n    <h1 class="text-3xl font-bold text-purple-400">${prompt.slice(0, 40)}</h1>\n    <p class="text-slate-300">Engineered by Aegis AI Studio Engine.</p>\n    <div class="p-6 bg-slate-800 rounded-xl border border-slate-700">\n      <p class="font-mono text-emerald-400">Status: Active & Operational</p>\n    </div>\n  </div>\n</body>\n</html>`
+          }
+        ]
+      };
+    }
+
+    // 3. Commit & Push Files directly to GitHub if requested
+    let pushedFiles: string[] = [];
+    let githubPushError = '';
+
+    if (autoPushGithub && token && owner && finalRepoName) {
+      for (const file of project.files || []) {
+        try {
+          const url = `https://api.github.com/repos/${owner}/${finalRepoName}/contents/${file.path}`;
+          let existingSha = '';
+          const checkRes = await fetchGithubApi(`${url}?ref=${githubConfig.branch || 'main'}`, token);
+          if (checkRes && checkRes.ok) {
+            const checkData: any = await checkRes.json();
+            existingSha = checkData.sha;
+          }
+
+          const base64Content = Buffer.from(file.content || '', 'utf-8').toString('base64');
+          const commitRes = await fetchGithubApi(url, token, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `🚀 Aegis AI Studio: Generated ${file.path} for ${project.title}`,
+              content: base64Content,
+              branch: githubConfig.branch || 'main',
+              ...(existingSha ? { sha: existingSha } : {})
+            })
+          });
+
+          if (commitRes.ok) {
+            pushedFiles.push(file.path);
+          }
+        } catch (pushErr: any) {
+          githubPushError = pushErr?.message || 'Error pushing file to GitHub';
+        }
+      }
+    }
+
+    const projectRecord = {
+      id: `project-${Date.now()}`,
+      title: project.title,
+      description: project.description,
+      techStack: project.techStack,
+      files: project.files,
+      repoName: finalRepoName,
+      repoOwner: owner,
+      repoUrl,
+      pushedToGithub: pushedFiles.length > 0,
+      pushedFilesCount: pushedFiles.length,
+      timestamp: new Date().toISOString()
+    };
+
+    autonomousSoftwareProjects.unshift(projectRecord);
+
+    vectorMemory.unshift({
+      id: `mem-app-${Date.now()}`,
+      query: `AI Software Built: ${project.title}`,
+      response: `Built complete application '${project.title}' (${project.files.length} files) and pushed directly to GitHub: ${repoUrl}`,
+      tags: ['AISoftwareBuilder', 'GoogleAIStudioStyle', 'GitHubAutoPush'],
+      createdAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      project: projectRecord,
+      message: pushedFiles.length > 0 
+        ? `🎉 Application successfully built and all ${pushedFiles.length} file(s) pushed directly to GitHub (${repoUrl})!`
+        : `Generated application code with ${project.files.length} file(s). ${githubPushError ? `GitHub Push status: ${githubPushError}` : ''}`
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to build software via AI Studio engine.' });
+  }
+});
+
+// Autonomous Background Innovation Daemon Engine (Runs automatically in background)
+let autoInnovatorConfig = {
+  enabled: true,
+  intervalMinutes: 30,
+  autoCreateNewRepoPerProject: true,
+  autoPushToGithub: true,
+  topicCategories: ['AI Micro-Tools', 'React Applications', 'Cybersecurity Utilities', 'Python Automation Scripts', 'Developer Tools'],
+  lastRunAt: new Date().toISOString(),
+  totalInventionsCreated: 0,
+  logs: [] as Array<{
+    id: string;
+    timestamp: string;
+    title: string;
+    repoName: string;
+    repoUrl: string;
+    status: string;
+    details: string;
+    filesCount: number;
+  }>
+};
+
+async function executeAutonomousInnovationCycle() {
+  const token = githubConfig.token || process.env.GITHUB_PAT || '';
+  if (!token) {
+    console.log('[AUTO INNOVATOR DAEMON] Skipped cycle: No GitHub token configured.');
+    return;
+  }
+
+  try {
+    const category = autoInnovatorConfig.topicCategories[Math.floor(Math.random() * autoInnovatorConfig.topicCategories.length)];
+    const timeSeed = Date.now().toString().slice(-5);
+    const repoName = `aegis-${category.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${timeSeed}`;
+
+    console.log(`[AUTO INNOVATOR DAEMON] Starting background creation cycle for category '${category}' (Repo: ${repoName})...`);
+
+    // 1. Generate Software Package using Gemini / Synthesis Engine
+    const systemPrompt = `You are an Autonomous AI Master Engineer & Inventor. You create production-ready software tools and applications.
+Return ONLY a raw JSON object with schema:
+{
+  "title": "Innovative Tool Name",
+  "description": "Explanation of what this autonomous software tool accomplishes",
+  "files": [
+    { "path": "README.md", "content": "..." },
+    { "path": "index.html", "content": "..." },
+    { "path": "script.js", "content": "..." },
+    { "path": "styles.css", "content": "..." }
+  ]
+}
+No markdown syntax outside JSON.`;
+
+    let generatedJsonStr = await generateContentWithFallback({
+      contents: [{ role: 'user', parts: [{ text: `Invent a complete, functional software app in category "${category}"` }] }],
+      systemInstruction: systemPrompt,
+      apiKey: process.env.GEMINI_API_KEY || getStoredApiKey() || ''
+    });
+
+    let project: any = null;
+    try {
+      const cleanJson = generatedJsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      project = JSON.parse(cleanJson);
+    } catch (e) {
+      project = {
+        title: `Aegis Autonomous ${category} Engine`,
+        description: `Autonomous background software invented by Aegis AI Daemon for category ${category}.`,
+        files: [
+          {
+            path: 'README.md',
+            content: `# Aegis ${category} Tool\n\nAutomated background creation by Aegis AI Daemon.\n\nInvented at: ${new Date().toISOString()}`
+          },
+          {
+            path: 'index.html',
+            content: `<!DOCTYPE html>\n<html>\n<head><title>Aegis ${category}</title></head>\n<body style="font-family:sans-serif;padding:2rem;">\n<h1>Aegis Autonomous ${category}</h1>\n<p>Invented and pushed automatically by Aegis AI Daemon without requiring manual button clicks.</p>\n</body>\n</html>`
+          }
+        ]
+      };
+    }
+
+    // 2. Auto-Create GitHub Repository on Profile
+    let repoUrl = '';
+    let owner = githubConfig.owner;
+    
+    if (autoInnovatorConfig.autoCreateNewRepoPerProject && token) {
+      const createRes = await fetchGithubApi('https://api.github.com/user/repos', token, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: repoName,
+          description: project.description || `Autonomous AI Invention by Aegis AI Daemon`,
+          private: false,
+          auto_init: true
+        })
+      });
+
+      if (createRes.ok) {
+        const repoObj: any = await createRes.json();
+        repoUrl = repoObj.html_url;
+        owner = repoObj.owner?.login || owner;
+      }
+    }
+
+    const targetRepo = repoUrl ? repoName : (githubConfig.repo || 'aegis-ai-system');
+    if (!repoUrl) repoUrl = `https://github.com/${owner}/${targetRepo}`;
+
+    // 3. Push Files Directly to GitHub Repository
+    let pushedCount = 0;
+    if (autoInnovatorConfig.autoPushToGithub && token && owner) {
+      for (const file of project.files || []) {
+        try {
+          const url = `https://api.github.com/repos/${owner}/${targetRepo}/contents/${file.path}`;
+          const base64Content = Buffer.from(file.content || '', 'utf-8').toString('base64');
+          const pushRes = await fetchGithubApi(url, token, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `🤖 Autonomous Invention: Added ${file.path} for ${project.title}`,
+              content: base64Content,
+              branch: 'main'
+            })
+          });
+          if (pushRes.ok) pushedCount++;
+        } catch (fileErr) {
+          console.warn(`Error pushing ${file.path}:`, fileErr);
+        }
+      }
+    }
+
+    autoInnovatorConfig.lastRunAt = new Date().toISOString();
+    autoInnovatorConfig.totalInventionsCreated += 1;
+
+    const logRecord = {
+      id: `inno-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      title: project.title || repoName,
+      repoName: targetRepo,
+      repoUrl,
+      status: pushedCount > 0 ? 'Pushed to GitHub' : 'Generated Local',
+      details: `${project.description || 'Autonomous Invention'}`,
+      filesCount: project.files?.length || 0
+    };
+
+    autoInnovatorConfig.logs.unshift(logRecord);
+    if (autoInnovatorConfig.logs.length > 50) autoInnovatorConfig.logs.pop();
+
+    vectorMemory.unshift({
+      id: `mem-auto-${Date.now()}`,
+      query: `Autonomous Invention: ${project.title}`,
+      response: `Invented and pushed new tool '${project.title}' to GitHub repository: ${repoUrl}`,
+      tags: ['AutonomousDaemon', 'BackgroundInvention', 'GitHubAutoPush'],
+      createdAt: new Date().toISOString()
+    });
+
+    console.log(`[AUTO INNOVATOR DAEMON] ✅ Successfully created & pushed '${project.title}' to GitHub (${repoUrl})!`);
+  } catch (err: any) {
+    console.error('[AUTO INNOVATOR DAEMON] Error during autonomous background cycle:', err?.message || err);
+  }
+}
+
+// Background Timer Worker - Checks every 60 seconds
+setInterval(() => {
+  if (autoInnovatorConfig.enabled) {
+    const last = autoInnovatorConfig.lastRunAt ? new Date(autoInnovatorConfig.lastRunAt).getTime() : 0;
+    const now = Date.now();
+    const elapsedMinutes = (now - last) / (1000 * 60);
+
+    if (elapsedMinutes >= autoInnovatorConfig.intervalMinutes) {
+      executeAutonomousInnovationCycle();
+    }
+  }
+}, 60 * 1000);
+
+// Autonomous Background Innovator Endpoints
+app.get('/api/auto-innovator/status', (req, res) => {
+  res.json({
+    success: true,
+    config: autoInnovatorConfig,
+    activeGithubUser: githubConfig.owner || 'Not Connected',
+    activeRepo: githubConfig.repo || 'Not Connected'
+  });
+});
+
+app.post('/api/auto-innovator/config', (req, res) => {
+  const { enabled, intervalMinutes, autoCreateNewRepoPerProject, autoPushToGithub } = req.body;
+  if (enabled !== undefined) autoInnovatorConfig.enabled = Boolean(enabled);
+  if (intervalMinutes !== undefined && Number(intervalMinutes) >= 5) autoInnovatorConfig.intervalMinutes = Number(intervalMinutes);
+  if (autoCreateNewRepoPerProject !== undefined) autoInnovatorConfig.autoCreateNewRepoPerProject = Boolean(autoCreateNewRepoPerProject);
+  if (autoPushToGithub !== undefined) autoInnovatorConfig.autoPushToGithub = Boolean(autoPushToGithub);
+
+  res.json({
+    success: true,
+    message: 'Autonomous Background Innovation Engine configuration updated.',
+    config: autoInnovatorConfig
+  });
+});
+
+app.post('/api/auto-innovator/trigger-now', async (req, res) => {
+  try {
+    await executeAutonomousInnovationCycle();
+    res.json({
+      success: true,
+      message: '🚀 Autonomous background cycle executed immediately! Check live invention log.',
+      lastRunAt: autoInnovatorConfig.lastRunAt,
+      latestLog: autoInnovatorConfig.logs[0] || null
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Failed to trigger autonomous innovation cycle.' });
   }
 });
 

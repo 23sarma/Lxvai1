@@ -55,6 +55,7 @@ import {
   Flame,
   Key,
   LogOut,
+  Power,
   KeyRound,
   Crown,
   Clock,
@@ -64,7 +65,7 @@ import { ScanTarget, ScanReport, ChatMessage, SubAgent, MemoryVector, Vulnerabil
 
 export default function App() {
   // Navigation & Drawer State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'scanner' | 'darkweb' | 'agents' | 'memory' | 'roadmap' | 'deployment' | 'google' | 'github' | 'hitl'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'chat' | 'dashboard' | 'scanner' | 'darkweb' | 'agents' | 'memory' | 'roadmap' | 'deployment' | 'google' | 'github' | 'hitl'>('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobileChatOpen, setIsMobileChatOpen] = useState(false);
 
@@ -523,6 +524,165 @@ export default function App() {
       console.error('Error executing module:', err);
     } finally {
       setExecutingModuleId(null);
+    }
+  };
+
+  // GitHub Repo Creator State
+  const [newRepoName, setNewRepoName] = useState('');
+  const [newRepoDesc, setNewRepoDesc] = useState('Created via Aegis AI Studio Agent');
+  const [newRepoPrivate, setNewRepoPrivate] = useState(false);
+  const [isCreatingRepo, setIsCreatingRepo] = useState(false);
+  const [createRepoStatusMsg, setCreateRepoStatusMsg] = useState('');
+
+  // AI Studio Software Builder State
+  const [appBuilderPrompt, setAppBuilderPrompt] = useState('');
+  const [appBuilderIsNewRepo, setAppBuilderIsNewRepo] = useState(true);
+  const [appBuilderTargetRepo, setAppBuilderTargetRepo] = useState('');
+  const [isBuildingApp, setIsBuildingApp] = useState(false);
+  const [appBuilderResult, setAppBuilderResult] = useState<any>(null);
+  const [appBuilderStatusMsg, setAppBuilderStatusMsg] = useState('');
+
+  // Autonomous Background Innovation Daemon State
+  const [autoInnovatorData, setAutoInnovatorData] = useState<any>(null);
+  const [isFetchingAutoInnovator, setIsFetchingAutoInnovator] = useState(false);
+  const [isTriggeringDaemon, setIsTriggeringDaemon] = useState(false);
+
+  const fetchAutoInnovatorStatus = async () => {
+    setIsFetchingAutoInnovator(true);
+    try {
+      const res = await fetch('/api/auto-innovator/status');
+      const data = await res.json();
+      if (data && data.config) {
+        setAutoInnovatorData(data);
+      }
+    } catch (err) {
+      console.warn('Error fetching auto innovator status:', err);
+    } finally {
+      setIsFetchingAutoInnovator(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAutoInnovatorStatus();
+    const interval = setInterval(fetchAutoInnovatorStatus, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleCreateNewGithubRepo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRepoName.trim()) {
+      setCreateRepoStatusMsg('⚠️ Please enter a repository name!');
+      return;
+    }
+    setIsCreatingRepo(true);
+    setCreateRepoStatusMsg('Creating repository on GitHub profile...');
+    try {
+      const res = await fetch('/api/github/create-repo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(githubToken ? { 'x-github-token': githubToken } : {})
+        },
+        body: JSON.stringify({
+          name: newRepoName,
+          description: newRepoDesc,
+          isPrivate: newRepoPrivate,
+          autoInit: true,
+          autoSelect: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCreateRepoStatusMsg(`🎉 ${data.message}`);
+        setGithubRepo(data.repo.name);
+        if (data.repo.owner) setGithubOwner(data.repo.owner);
+        setNewRepoName('');
+        if (githubToken) fetchGithubRepos(githubToken);
+      } else {
+        setCreateRepoStatusMsg(`❌ Error: ${data.error}`);
+      }
+    } catch (err: any) {
+      setCreateRepoStatusMsg(`❌ Failed: ${err?.message || 'Network error'}`);
+    } finally {
+      setIsCreatingRepo(false);
+    }
+  };
+
+  const handleBuildSoftwareApp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!appBuilderPrompt.trim()) {
+      setAppBuilderStatusMsg('⚠️ Please enter a prompt describing the application or software!');
+      return;
+    }
+    setIsBuildingApp(true);
+    setAppBuilderStatusMsg('⚡ Google AI Studio Engine is compiling multi-file project and pushing to GitHub...');
+    try {
+      const res = await fetch('/api/ai/build-software', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(githubToken ? { 'x-github-token': githubToken } : {})
+        },
+        body: JSON.stringify({
+          prompt: appBuilderPrompt,
+          isNewRepo: appBuilderIsNewRepo,
+          targetRepo: appBuilderTargetRepo || githubRepo,
+          autoPushGithub: true
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAppBuilderResult(data.project);
+        setAppBuilderStatusMsg(`🎉 ${data.message}`);
+        setAppBuilderPrompt('');
+        if (data.project?.repoName) setGithubRepo(data.project.repoName);
+        if (githubToken) {
+          fetchGithubRepos(githubToken);
+          if (data.project?.repoOwner && data.project?.repoName) {
+            fetchGithubCommits(githubToken, data.project.repoOwner, data.project.repoName);
+          }
+        }
+      } else {
+        setAppBuilderStatusMsg(`❌ Error: ${data.error}`);
+      }
+    } catch (err: any) {
+      setAppBuilderStatusMsg(`❌ Failed: ${err?.message || 'Network error'}`);
+    } finally {
+      setIsBuildingApp(false);
+    }
+  };
+
+  const handleToggleAutoInnovator = async (enabled: boolean) => {
+    try {
+      const res = await fetch('/api/auto-innovator/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchAutoInnovatorStatus();
+      }
+    } catch (err) {
+      console.error('Error toggling auto innovator:', err);
+    }
+  };
+
+  const handleTriggerAutoInnovatorNow = async () => {
+    setIsTriggeringDaemon(true);
+    try {
+      const res = await fetch('/api/auto-innovator/trigger-now', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        fetchAutoInnovatorStatus();
+        if (githubToken && githubOwner && githubRepo) {
+          fetchGithubCommits(githubToken, githubOwner, githubRepo);
+        }
+      }
+    } catch (err) {
+      console.error('Error triggering auto innovator cycle:', err);
+    } finally {
+      setIsTriggeringDaemon(false);
     }
   };
 
@@ -2174,6 +2334,23 @@ ${userReposSummary}
                 </span>
 
                 <button
+                  onClick={() => { setActiveTab('chat'); setIsSidebarOpen(false); }}
+                  className={`w-full p-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
+                    activeTab === 'chat'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20'
+                      : 'text-cyan-300 bg-cyan-500/10 border border-cyan-500/30'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <Bot className="w-4 h-4 text-cyan-400" />
+                    <span>💬 Primary AI Chat Studio (Main Interface)</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-[10px] font-mono text-cyan-300 font-bold">
+                    PRIMARY
+                  </span>
+                </button>
+
+                <button
                   onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
                   className={`w-full p-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between ${
                     activeTab === 'dashboard'
@@ -2471,6 +2648,249 @@ ${userReposSummary}
               <button onClick={() => setGithubSyncSuccessMsg(null)} className="text-slate-400 hover:text-white">
                 <X className="w-3.5 h-3.5" />
               </button>
+            </div>
+          )}
+
+          {/* TAB 0: PRIMARY AI CHAT STUDIO (MAIN CHAT-FIRST INTERFACE) */}
+          {activeTab === 'chat' && (
+            <div className="max-w-5xl mx-auto h-[calc(100vh-100px)] flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+              {/* Chat Header */}
+              <div className="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
+                    <Bot className="w-5 h-5 text-slate-950" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h2 className="font-bold text-white text-base">Aegis AI Autonomous Studio</h2>
+                      <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold flex items-center space-x-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>AUTONOMOUS BUILDER ONLINE</span>
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 font-mono">
+                      Ask anything • Create GitHub Repos • Build Apps & Software • Auto-Push Code
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setActiveTab('github')}
+                    className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded-xl text-xs font-mono font-medium transition-all flex items-center space-x-1.5"
+                    title="GitHub Settings"
+                  >
+                    <Github className="w-3.5 h-3.5 text-purple-400" />
+                    <span className="hidden sm:inline">Repo: {githubOwner}/{githubRepo}</span>
+                  </button>
+                  <button
+                    onClick={handleClearChat}
+                    className="p-2 text-slate-400 hover:text-rose-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl transition-colors"
+                    title="Clear Conversation"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Chat Messages Body */}
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/50">
+                {messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex items-start space-x-3 ${msg.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                        msg.sender === 'user'
+                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold text-xs'
+                          : msg.sender === 'system'
+                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                          : 'bg-slate-800 text-cyan-400 border-slate-700'
+                      }`}
+                    >
+                      {msg.sender === 'user' ? 'YOU' : <Bot className="w-4 h-4" />}
+                    </div>
+
+                    <div
+                      className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 text-xs font-mono leading-relaxed space-y-2 shadow-xl ${
+                        msg.sender === 'user'
+                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-tr-none'
+                          : msg.sender === 'system'
+                          ? 'bg-slate-950 border border-amber-500/30 text-amber-200 w-full'
+                          : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none'
+                      }`}
+                    >
+                      {msg.agentName && (
+                        <div className="flex items-center justify-between text-[10px] text-cyan-400 border-b border-slate-800/80 pb-1.5 mb-1.5 font-bold">
+                          <span>{msg.agentName}</span>
+                          <span className="text-slate-500 font-normal">{msg.timestamp}</span>
+                        </div>
+                      )}
+
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+
+                      {/* Render Message Attachments */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-2.5 pt-2 border-t border-cyan-400/30 space-y-2">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-200">
+                            Attached Files ({msg.attachments.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {msg.attachments.map(att => (
+                              <div key={att.id} className="bg-slate-950/90 border border-slate-800 p-1.5 rounded-lg flex items-center space-x-2 text-[10px]">
+                                {att.type?.startsWith('image/') && att.dataUrl ? (
+                                  <img src={att.dataUrl} alt={att.name} className="w-7 h-7 rounded object-cover border border-slate-700" />
+                                ) : (
+                                  <FileCode className="w-4 h-4 text-cyan-400 shrink-0" />
+                                )}
+                                <div className="truncate max-w-[120px]">
+                                  <p className="font-semibold truncate text-slate-100">{att.name}</p>
+                                  <p className="text-[8px] text-slate-400 font-mono">{(att.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Render Chat Interactive Action Buttons */}
+                      {msg.actionButtons && msg.actionButtons.length > 0 && (
+                        <div className="mt-2.5 pt-2 border-t border-slate-800 flex flex-wrap gap-2">
+                          {msg.actionButtons.map((btn, bIdx) => (
+                            <button
+                              key={bIdx}
+                              onClick={() => {
+                                if (btn.action === 'hitl_approve' && btn.payload?.id) {
+                                  handleApproveProposal(btn.payload.id);
+                                } else if (btn.action === 'hitl_reject' && btn.payload?.id) {
+                                  handleRejectProposal(btn.payload.id);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center space-x-1.5 cursor-pointer shadow-md ${
+                                btn.action === 'hitl_approve'
+                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 hover:from-emerald-400 hover:to-teal-400'
+                                  : 'bg-slate-800 text-rose-300 border border-slate-700 hover:bg-slate-700'
+                              }`}
+                            >
+                              <span>{btn.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 1-Click Copy Message Footer Bar */}
+                      <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                        <span className="text-[9px] text-slate-400 opacity-80">1-Click Copy</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.id, msg.content)}
+                          className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-all flex items-center space-x-1.5 shadow-sm ${
+                            copiedMessageId === msg.id
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                              : msg.sender === 'user'
+                              ? 'bg-cyan-700/60 text-white border-cyan-400/40 hover:bg-cyan-700'
+                              : 'bg-slate-900/90 text-cyan-300 border-slate-700 hover:bg-slate-800 hover:border-cyan-500/50'
+                          }`}
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3 text-cyan-400 shrink-0" />
+                              <span>Copy Message</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {isChatLoading && (
+                  <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono bg-slate-950 p-3 rounded-xl border border-slate-800 w-fit">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                    <span>Aegis AI building, creating repos & reasoning in progress...</span>
+                  </div>
+                )}
+                <div ref={chatBottomRef} />
+              </div>
+
+              {/* Chat Input Form Area */}
+              <div className="bg-slate-950 border-t border-slate-800 p-4 space-y-3">
+                {/* Attached Files Preview Bar */}
+                {attachedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pb-2">
+                    {attachedFiles.map(att => (
+                      <div key={att.id} className="bg-slate-900 border border-slate-700/70 text-slate-200 text-[10px] pl-2 pr-1 py-1 rounded-md flex items-center space-x-1.5">
+                        <Paperclip className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[120px]">{att.name}</span>
+                        <button type="button" onClick={() => handleRemoveFile(att.id)} className="text-slate-400 hover:text-red-400 p-0.5">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <form onSubmit={handleSendChat} className="space-y-2.5">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-3 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 rounded-xl border border-slate-800 transition-colors shrink-0"
+                      title="Attach Code / Files"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        placeholder="Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write app code'..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-4 pr-12 py-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono shadow-inner"
+                      />
+                      <button
+                        type="submit"
+                        disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
+                        className="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center space-x-1.5 disabled:opacity-40"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Shortcut Prompt Pills */}
+                  <div className="flex items-center space-x-2 text-[10px] font-mono text-slate-400 overflow-x-auto pb-1">
+                    <span className="text-slate-500 shrink-0">Quick Commands:</span>
+                    <button
+                      type="button"
+                      onClick={() => setChatInput('Create a new GitHub repo named "ai-smart-app" and build README and main files')}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-cyan-300 hover:border-cyan-500/40"
+                    >
+                      🐙 Create Repo & Files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatInput('Build an automated Python & React full-stack app with Google Studio features')}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-indigo-300 hover:border-indigo-500/40"
+                    >
+                      ⚡ Build Full-Stack App
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChatInput('Automatically rewrite code and push updates directly to main branch')}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg shrink-0 text-purple-300 hover:border-purple-500/40"
+                    >
+                      🚀 Auto Push Code
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
           {/* TAB 1: OVERVIEW DASHBOARD */}
@@ -3700,6 +4120,313 @@ ${userReposSummary}
                         </>
                       )}
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI STUDIO & AUTONOMOUS GITHUB BUILDER ENGINE HUBS */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* HUB 1: INSTANT GITHUB REPOSITORY CREATOR */}
+                <div className="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-6 space-y-4 shadow-xl flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2 text-cyan-400 font-bold text-sm">
+                      <div className="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <span>1. Create New GitHub Repository</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Instantly create a brand new repository directly on your GitHub profile without leaving this workspace.
+                    </p>
+
+                    <form onSubmit={handleCreateNewGithubRepo} className="space-y-3 text-xs pt-1">
+                      <div className="space-y-1">
+                        <label className="font-mono text-slate-300">Repository Name *</label>
+                        <input
+                          type="text"
+                          value={newRepoName}
+                          onChange={e => setNewRepoName(e.target.value)}
+                          placeholder="e.g. my-new-ai-project"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="font-mono text-slate-300">Description</label>
+                        <input
+                          type="text"
+                          value={newRepoDesc}
+                          onChange={e => setNewRepoDesc(e.target.value)}
+                          placeholder="Project description..."
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500 font-mono text-[11px]"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2 py-1">
+                        <input
+                          type="checkbox"
+                          id="newRepoPrivate"
+                          checked={newRepoPrivate}
+                          onChange={e => setNewRepoPrivate(e.target.checked)}
+                          className="rounded border-slate-700 bg-slate-950 text-cyan-500 focus:ring-0"
+                        />
+                        <label htmlFor="newRepoPrivate" className="text-xs text-slate-300 cursor-pointer">
+                          Make Repository Private
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isCreatingRepo || !githubToken}
+                        className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-600/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-40"
+                      >
+                        {isCreatingRepo ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Rocket className="w-4 h-4" />
+                        )}
+                        <span>Create GitHub Repo Now</span>
+                      </button>
+                    </form>
+
+                    {createRepoStatusMsg && (
+                      <div className="p-3 bg-slate-950 border border-cyan-500/30 rounded-xl text-[11px] font-mono text-cyan-200 break-words">
+                        {createRepoStatusMsg}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* HUB 2: GOOGLE AI STUDIO SOFTWARE & APP BUILDER */}
+                <div className="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-6 space-y-4 shadow-xl lg:col-span-2 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-purple-400 font-bold text-sm">
+                        <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <span>2. Google AI Studio Style Multi-File App Builder</span>
+                      </div>
+                      <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                        Text-to-Software Engine
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Type any prompt describing the app or software tool you want to invent. The AI will generate full source code (HTML, React, Python, or Fullstack) and push it directly to your GitHub profile!
+                    </p>
+
+                    <form onSubmit={handleBuildSoftwareApp} className="space-y-3 text-xs">
+                      <div className="space-y-1">
+                        <label className="font-mono text-slate-300">Software / App Description Prompt</label>
+                        <textarea
+                          rows={3}
+                          value={appBuilderPrompt}
+                          onChange={e => setAppBuilderPrompt(e.target.value)}
+                          placeholder="e.g. Build an interactive Cyber Threat Radar dashboard with animated canvas and live metrics, or build a Python AI scanner..."
+                          className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-slate-200 focus:outline-none focus:border-purple-500 font-mono text-xs placeholder-slate-600"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                          <input
+                            type="radio"
+                            id="optNewRepo"
+                            name="repoOpt"
+                            checked={appBuilderIsNewRepo}
+                            onChange={() => setAppBuilderIsNewRepo(true)}
+                            className="text-purple-500"
+                          />
+                          <label htmlFor="optNewRepo" className="text-xs text-slate-300 cursor-pointer">
+                            ✨ Auto-Create NEW Repo on GitHub
+                          </label>
+                        </div>
+
+                        <div className="flex items-center space-x-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                          <input
+                            type="radio"
+                            id="optExistingRepo"
+                            name="repoOpt"
+                            checked={!appBuilderIsNewRepo}
+                            onChange={() => setAppBuilderIsNewRepo(false)}
+                            className="text-purple-500"
+                          />
+                          <label htmlFor="optExistingRepo" className="text-xs text-slate-300 cursor-pointer">
+                            Target Active Repo ({githubRepo || 'Lxvai1'})
+                          </label>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isBuildingApp || !githubToken}
+                        className="w-full py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs rounded-xl shadow-xl shadow-purple-600/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-40"
+                      >
+                        {isBuildingApp ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Compiling Multi-File Software & Pushing to GitHub...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 text-amber-300" />
+                            <span>⚡ Build Complete Software & Push to GitHub</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
+
+                    {appBuilderStatusMsg && (
+                      <div className="p-3 bg-slate-950 border border-purple-500/30 rounded-xl text-xs font-mono text-purple-200">
+                        {appBuilderStatusMsg}
+                      </div>
+                    )}
+
+                    {appBuilderResult && (
+                      <div className="bg-slate-950 p-4 rounded-xl border border-purple-500/40 space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-white flex items-center space-x-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>{appBuilderResult.title}</span>
+                          </span>
+                          <a
+                            href={appBuilderResult.repoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 rounded-lg text-[10px] font-mono flex items-center space-x-1"
+                          >
+                            <span>Open on GitHub</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        <p className="text-[11px] text-slate-400">{appBuilderResult.description}</p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {appBuilderResult.files?.map((f: any, idx: number) => (
+                            <span key={idx} className="px-2 py-0.5 bg-slate-900 border border-slate-800 text-cyan-300 text-[10px] font-mono rounded">
+                              📄 {f.path}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* HUB 3: AUTONOMOUS BACKGROUND INNOVATION DAEMON (RUNS EVEN WHEN OFFLINE) */}
+              <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-6 space-y-5 shadow-2xl">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400">
+                      <Bot className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                        <span>3. Autonomous Background AI Innovation Daemon</span>
+                        <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-full border ${
+                          autoInnovatorData?.config?.enabled 
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 animate-pulse' 
+                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                        }`}>
+                          {autoInnovatorData?.config?.enabled ? '🟢 DAEMON ACTIVE (RUNS OFFLINE)' : '🔴 PAUSED'}
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        When enabled, the AI background daemon invents new apps, software tools, and technologies automatically—creating new GitHub repositories and pushing code directly without requiring manual button clicks!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <button
+                      onClick={() => handleToggleAutoInnovator(!autoInnovatorData?.config?.enabled)}
+                      className={`px-4 py-2 font-mono text-xs font-bold rounded-xl border transition-all flex items-center space-x-2 ${
+                        autoInnovatorData?.config?.enabled
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                          : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      <Power className="w-4 h-4" />
+                      <span>{autoInnovatorData?.config?.enabled ? 'Active (Click to Pause)' : 'Enable Background Agent'}</span>
+                    </button>
+
+                    <button
+                      onClick={handleTriggerAutoInnovatorNow}
+                      disabled={isTriggeringDaemon || !githubToken}
+                      className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold font-mono text-xs rounded-xl shadow-lg transition-all flex items-center space-x-1.5 disabled:opacity-40"
+                    >
+                      {isTriggeringDaemon ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Flame className="w-3.5 h-3.5" />
+                      )}
+                      <span>Run Innovation Cycle Now</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Stats Bar */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+                    <span className="text-[10px] text-slate-400 block">Total Inventions Created</span>
+                    <span className="text-base font-bold text-amber-400">{autoInnovatorData?.config?.totalInventionsCreated || 0} Apps</span>
+                  </div>
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+                    <span className="text-[10px] text-slate-400 block">Run Interval</span>
+                    <span className="text-base font-bold text-purple-300">Every {autoInnovatorData?.config?.intervalMinutes || 30} Mins</span>
+                  </div>
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+                    <span className="text-[10px] text-slate-400 block">Auto-Create GitHub Repos</span>
+                    <span className="text-base font-bold text-emerald-400">ENABLED (Auto-Repo)</span>
+                  </div>
+                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+                    <span className="text-[10px] text-slate-400 block">Auto-Push to GitHub</span>
+                    <span className="text-base font-bold text-cyan-400">DIRECT PUSH (No Clicks)</span>
+                  </div>
+                </div>
+
+                {/* Live Inventions Activity Log Stream */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-300 font-mono flex items-center space-x-2">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <span>Real-Time Autonomous Invention Stream ({autoInnovatorData?.config?.logs?.length || 0})</span>
+                  </h4>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {!autoInnovatorData?.config?.logs || autoInnovatorData.config.logs.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic py-4 text-center">
+                        Background daemon is ready. Click "Run Innovation Cycle Now" or enable the agent to see inventions stream in automatically!
+                      </p>
+                    ) : (
+                      autoInnovatorData.config.logs.map((log: any, idx: number) => (
+                        <div key={idx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-emerald-400 font-bold">{log.title}</span>
+                              <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-[10px]">
+                                {log.repoName}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400">{log.details}</p>
+                          </div>
+                          <div className="flex items-center space-x-3 shrink-0">
+                            <span className="text-[10px] text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                            <a
+                              href={log.repoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[10px] flex items-center space-x-1"
+                            >
+                              <span>View Repo</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
