@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -1333,7 +1333,7 @@ export default function App() {
     if (memoryList.length <= 1) fetchMemory();
   }, []);
 
-  const scrollToBottom = (smooth = true) => {
+  const scrollToBottom = (smooth = false) => {
     const el = chatContainerRef.current;
     if (el) {
       if (smooth) {
@@ -1360,13 +1360,18 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     scrollToBottom(false);
-    const t1 = setTimeout(() => scrollToBottom(false), 30);
-    const t2 = setTimeout(() => scrollToBottom(true), 100);
-    const t3 = setTimeout(() => scrollToBottom(true), 300);
-    const t4 = setTimeout(() => scrollToBottom(true), 600);
+    const frameId = requestAnimationFrame(() => {
+      scrollToBottom(false);
+      requestAnimationFrame(() => scrollToBottom(false));
+    });
+    const t1 = setTimeout(() => scrollToBottom(false), 50);
+    const t2 = setTimeout(() => scrollToBottom(false), 150);
+    const t3 = setTimeout(() => scrollToBottom(false), 300);
+    const t4 = setTimeout(() => scrollToBottom(false), 600);
     return () => {
+      cancelAnimationFrame(frameId);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
@@ -1378,21 +1383,28 @@ export default function App() {
     const el = chatContainerRef.current;
     if (!el) return;
 
-    const observer = new ResizeObserver(() => {
-      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 250;
+    const handleScrollUpdate = () => {
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 350;
       if (isNearBottom || isChatLoading) {
         el.scrollTop = el.scrollHeight + 10000;
       }
-    });
+    };
 
-    observer.observe(el);
+    const mutationObserver = new MutationObserver(handleScrollUpdate);
+    mutationObserver.observe(el, { childList: true, subtree: true, characterData: true });
+
+    const resizeObserver = new ResizeObserver(handleScrollUpdate);
+    resizeObserver.observe(el);
     Array.from(el.children).forEach(child => {
       if (child instanceof Element) {
-        observer.observe(child);
+        resizeObserver.observe(child);
       }
     });
 
-    return () => observer.disconnect();
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
   }, [isChatLoading, messages]);
 
   const handleChatScroll = (e: React.UIEvent<HTMLDivElement>) => {
