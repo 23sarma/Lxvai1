@@ -1334,39 +1334,66 @@ export default function App() {
   }, []);
 
   const scrollToBottom = (smooth = true) => {
-    const doScroll = () => {
-      if (chatContainerRef.current) {
-        const el = chatContainerRef.current;
-        if (smooth) {
-          try {
-            el.scrollTo({
-              top: el.scrollHeight,
-              behavior: 'smooth'
-            });
-          } catch (e) {
-            el.scrollTop = el.scrollHeight;
-          }
-        } else {
+    const el = chatContainerRef.current;
+    if (el) {
+      if (smooth) {
+        try {
+          el.scrollTo({
+            top: el.scrollHeight,
+            behavior: 'smooth'
+          });
+        } catch (e) {
           el.scrollTop = el.scrollHeight;
         }
+      } else {
+        el.scrollTop = el.scrollHeight;
       }
-    };
+    }
 
-    doScroll();
-    requestAnimationFrame(doScroll);
-    setTimeout(doScroll, 40);
-    setTimeout(doScroll, 120);
-    setTimeout(doScroll, 300);
-    setTimeout(doScroll, 600);
+    if (chatBottomRef.current) {
+      try {
+        chatBottomRef.current.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'auto',
+          block: 'end'
+        });
+      } catch (e) {}
+    }
   };
 
   useEffect(() => {
-    scrollToBottom(true);
-  }, [messages, isChatLoading, isMobileChatOpen, activeTab]);
+    scrollToBottom(false);
+    const t1 = setTimeout(() => scrollToBottom(false), 50);
+    const t2 = setTimeout(() => scrollToBottom(false), 200);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [messages, isChatLoading, activeTab]);
+
+  useEffect(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => {
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+      if (isNearBottom || isChatLoading) {
+        el.scrollTop = el.scrollHeight;
+      }
+    });
+
+    observer.observe(el);
+    Array.from(el.children).forEach(child => {
+      if (child instanceof Element) {
+        observer.observe(child);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [isChatLoading, messages]);
 
   const handleChatScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
-    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 60;
+    const isScrolledUp = target.scrollHeight - target.scrollTop - target.clientHeight > 40;
     setShowScrollBottomBtn(isScrolledUp);
   };
 
