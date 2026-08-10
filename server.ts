@@ -7,7 +7,8 @@ import { GoogleGenAI } from '@google/genai';
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Preserve system-injected GEMINI_API_KEY from environment
 const SYSTEM_ENV_GEMINI_KEY = process.env.GEMINI_API_KEY || '';

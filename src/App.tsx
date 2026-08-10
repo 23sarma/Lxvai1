@@ -1339,14 +1339,14 @@ export default function App() {
       if (smooth) {
         try {
           el.scrollTo({
-            top: el.scrollHeight,
+            top: el.scrollHeight + 10000,
             behavior: 'smooth'
           });
         } catch (e) {
-          el.scrollTop = el.scrollHeight;
+          el.scrollTop = el.scrollHeight + 10000;
         }
       } else {
-        el.scrollTop = el.scrollHeight;
+        el.scrollTop = el.scrollHeight + 10000;
       }
     }
 
@@ -1362,11 +1362,15 @@ export default function App() {
 
   useEffect(() => {
     scrollToBottom(false);
-    const t1 = setTimeout(() => scrollToBottom(false), 50);
-    const t2 = setTimeout(() => scrollToBottom(false), 200);
+    const t1 = setTimeout(() => scrollToBottom(false), 30);
+    const t2 = setTimeout(() => scrollToBottom(true), 100);
+    const t3 = setTimeout(() => scrollToBottom(true), 300);
+    const t4 = setTimeout(() => scrollToBottom(true), 600);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [messages, isChatLoading, activeTab]);
 
@@ -1375,9 +1379,9 @@ export default function App() {
     if (!el) return;
 
     const observer = new ResizeObserver(() => {
-      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+      const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 250;
       if (isNearBottom || isChatLoading) {
-        el.scrollTop = el.scrollHeight;
+        el.scrollTop = el.scrollHeight + 10000;
       }
     });
 
@@ -1680,14 +1684,29 @@ app.use(cors({
 
     const savedApiKey = localStorage.getItem('aegis_gemini_api_key');
 
+    // Sanitize history to prevent payload bloating with repetitive base64 dataUrls
+    const sanitizedHistory = messages.slice(-15).map(m => {
+      if (!m.attachments) return m;
+      return {
+        ...m,
+        attachments: m.attachments.map(att => ({
+          id: att.id,
+          name: att.name,
+          size: att.size,
+          type: att.type,
+          textContent: att.textContent ? att.textContent.slice(0, 1000) : undefined
+        }))
+      };
+    });
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: currentPrompt, 
-          history: messages,
-          memoryContext: [autoMemoryEntry, ...memoryList],
+          history: sanitizedHistory,
+          memoryContext: [autoMemoryEntry, ...memoryList.slice(0, 10)],
           attachments: currentAttachments,
           apiKey: savedApiKey || undefined,
           githubConfig: {
@@ -5501,223 +5520,20 @@ ${userReposSummary}
         </aside>
       </div>
 
-      {/* Mobile Interactive Chat Sheet / Drawer */}
-      {isMobileChatOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 lg:hidden">
-          {/* Mobile Chat Header */}
-          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Bot className="w-6 h-6 text-cyan-400" />
-              <div>
-                <h3 className="font-bold text-sm text-white">Aegis AI Assistant</h3>
-                <p className="text-[11px] font-mono text-cyan-400">Autonomous Reasoning Mode</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => mobileFileInputRef.current?.click()}
-                className="p-2 bg-slate-800 text-cyan-400 hover:text-white rounded-xl border border-slate-700/60"
-                title="Attach file"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setIsMobileChatOpen(false)}
-                className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-xl border border-slate-700/60"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Chat Messages */}
-          <div
-            ref={mobileChatContainerRef}
-            onScroll={handleChatScroll}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-950 relative"
-          >
-            {isDraggingFile && (
-              <div className="absolute inset-0 z-30 bg-cyan-950/90 border-2 border-dashed border-cyan-400 rounded-xl flex flex-col items-center justify-center text-cyan-200 p-4 text-center backdrop-blur-sm">
-                <FileUp className="w-8 h-8 text-cyan-400 mb-2 animate-bounce" />
-                <p className="font-bold text-xs">Drop files to upload & analyze</p>
-              </div>
-            )}
-
-            {messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${
-                  msg.sender === 'user' ? 'items-end' : 'items-start'
-                }`}
-              >
-                <div className="flex items-center justify-between space-x-1 mb-1 text-[10px] text-slate-500 font-mono w-full px-1">
-                  <div className="flex items-center space-x-1">
-                    {msg.sender === 'user' ? (
-                      <span className="text-slate-300 font-bold">You</span>
-                    ) : (
-                      <span className="text-cyan-400 font-bold">{(msg.agentName || 'Aegis Core AI').replace(/Gemini/gi, 'Autonomous')}</span>
-                    )}
-                    <span>•</span>
-                    <span>{msg.timestamp}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyMessage(msg.id, msg.content)}
-                    className="hover:text-cyan-300 text-slate-400 transition-colors flex items-center space-x-1 p-0.5"
-                    title="Quick Copy Message"
-                  >
-                    {copiedMessageId === msg.id ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-400" />
-                        <span className="text-[9px] text-emerald-400 font-bold">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3 h-3" />
-                        <span className="text-[9px]">Copy</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div
-                  className={`p-3 rounded-xl max-w-[92%] leading-relaxed ${
-                    msg.sender === 'user'
-                      ? 'bg-cyan-600 text-white rounded-tr-none'
-                      : msg.sender === 'system'
-                      ? 'bg-slate-900 border border-slate-800 text-cyan-300 w-full'
-                      : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-
-                  {/* Render Mobile Message Attachments */}
-                  {msg.attachments && msg.attachments.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-cyan-400/30 space-y-2">
-                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-cyan-200">
-                        Attached Files ({msg.attachments.length}):
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.attachments.map(att => (
-                          <div key={att.id} className="bg-slate-950/90 border border-slate-800 p-1 rounded-lg flex items-center space-x-2 text-[10px]">
-                            {att.type?.startsWith('image/') && att.dataUrl ? (
-                              <img src={att.dataUrl} alt={att.name} className="w-7 h-7 rounded object-cover border border-slate-700" />
-                            ) : (
-                              <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-                            )}
-                            <div className="truncate max-w-[120px]">
-                              <p className="font-semibold truncate text-slate-100">{att.name}</p>
-                              <p className="text-[8px] text-slate-400 font-mono">{(att.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mobile 1-Click Copy Message Footer Bar */}
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                    <span className="text-[9px] text-slate-400 opacity-80">1-Click Copy</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyMessage(msg.id, msg.content)}
-                      className={`px-2.5 py-1 rounded-lg border text-[10px] font-bold transition-all flex items-center space-x-1.5 shadow-sm ${
-                        copiedMessageId === msg.id
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
-                          : msg.sender === 'user'
-                          ? 'bg-cyan-700/60 text-white border-cyan-400/40 hover:bg-cyan-700'
-                          : 'bg-slate-900/90 text-cyan-300 border-slate-700 hover:bg-slate-800 hover:border-cyan-500/50'
-                      }`}
-                    >
-                      {copiedMessageId === msg.id ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400 shrink-0" />
-                          <span>Copied to Clipboard!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3 text-cyan-400 shrink-0" />
-                          <span>Copy Message</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {isChatLoading && (
-              <div className="flex items-center space-x-2 text-xs text-slate-400 font-mono">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                <span>Aegis AI evaluating security prompt...</span>
-              </div>
-            )}
-            <div ref={mobileChatBottomRef} />
-          </div>
-
-          {/* Mobile Attached Files Preview Bar */}
-          {attachedFiles.length > 0 && (
-            <div className="px-3 pt-2 pb-1 bg-slate-900 border-t border-slate-800 flex flex-wrap gap-1.5">
-              {attachedFiles.map(att => (
-                <div key={att.id} className="bg-slate-950 border border-slate-700/70 text-slate-200 text-[10px] pl-2 pr-1 py-1 rounded-md flex items-center space-x-1.5">
-                  <Paperclip className="w-3 h-3 text-cyan-400 shrink-0" />
-                  <span className="truncate max-w-[100px]">{att.name}</span>
-                  <button type="button" onClick={() => handleRemoveFile(att.id)} className="text-slate-400 hover:text-red-400 p-0.5">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Hidden Mobile File Input */}
-          <input
-            ref={mobileFileInputRef}
-            type="file"
-            multiple
-            onChange={(e) => e.target.files && handleProcessFiles(e.target.files)}
-            className="hidden"
-          />
-
-          {/* Mobile Chat Form */}
-          <form onSubmit={handleSendChat} className="p-3 border-t border-slate-800 bg-slate-900">
-            <div className="relative flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => mobileFileInputRef.current?.click()}
-                className="p-2.5 text-cyan-400 hover:text-white bg-slate-950 border border-slate-800 rounded-xl transition-colors shrink-0"
-                title="Attach Files"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <div className="relative flex-1 flex items-center">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder="Type message or attach file..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3 pr-12 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                />
-                <button
-                  type="submit"
-                  disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
-                  className="absolute right-1.5 p-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg transition-colors disabled:opacity-40"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
-
       {/* Mobile Bottom Quick Navigation Bar (Smartphone First) */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around py-2 px-1">
         <button
-          onClick={() => { setActiveTab('dashboard'); setIsMobileChatOpen(false); }}
+          onClick={() => { setActiveTab('chat'); setIsSidebarOpen(false); }}
+          className={`flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl transition-all relative ${
+            activeTab === 'chat' ? 'text-cyan-400 bg-cyan-500/20 border border-cyan-500/30 font-bold' : 'text-slate-400'
+          }`}
+        >
+          <Bot className="w-5 h-5 text-cyan-400" />
+          <span className="text-[10px] mt-0.5">AI Chat</span>
+        </button>
+
+        <button
+          onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
           className={`flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl transition-all ${
             activeTab === 'dashboard' ? 'text-cyan-400 bg-cyan-500/10 font-bold' : 'text-slate-400'
           }`}
@@ -5727,7 +5543,7 @@ ${userReposSummary}
         </button>
 
         <button
-          onClick={() => { setActiveTab('scanner'); setIsMobileChatOpen(false); }}
+          onClick={() => { setActiveTab('scanner'); setIsSidebarOpen(false); }}
           className={`flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl transition-all ${
             activeTab === 'scanner' ? 'text-cyan-400 bg-cyan-500/10 font-bold' : 'text-slate-400'
           }`}
@@ -5737,7 +5553,7 @@ ${userReposSummary}
         </button>
 
         <button
-          onClick={() => { setActiveTab('agents'); setIsMobileChatOpen(false); }}
+          onClick={() => { setActiveTab('agents'); setIsSidebarOpen(false); }}
           className={`flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl transition-all ${
             activeTab === 'agents' ? 'text-cyan-400 bg-cyan-500/10 font-bold' : 'text-slate-400'
           }`}
@@ -5747,22 +5563,13 @@ ${userReposSummary}
         </button>
 
         <button
-          onClick={() => { setActiveTab('deployment'); setIsMobileChatOpen(false); }}
+          onClick={() => { setActiveTab('deployment'); setIsSidebarOpen(false); }}
           className={`flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl transition-all ${
             activeTab === 'deployment' ? 'text-emerald-400 bg-emerald-500/10 font-bold' : 'text-slate-400'
           }`}
         >
           <Rocket className="w-5 h-5" />
           <span className="text-[10px] mt-0.5">Deploy</span>
-        </button>
-
-        <button
-          onClick={() => setIsMobileChatOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-2 min-w-[56px] min-h-[44px] rounded-xl text-cyan-300 bg-cyan-500/20 border border-cyan-500/30 font-bold relative"
-        >
-          <Bot className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">AI Chat</span>
-          <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
         </button>
       </nav>
 
