@@ -2932,22 +2932,22 @@ ${userReposSummary}
                     </div>
 
                     <div
-                      className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 text-xs font-mono leading-relaxed space-y-2 shadow-md ${
+                      className={`max-w-[88%] sm:max-w-[82%] rounded-2xl p-3.5 sm:p-4 text-xs sm:text-sm font-sans leading-relaxed space-y-2 shadow-sm ${
                         msg.sender === 'user'
-                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-tr-none'
+                          ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-tr-none font-normal'
                           : msg.sender === 'system'
                           ? 'bg-amber-50 border border-amber-300 text-amber-950 w-full font-medium'
-                          : 'bg-white border border-slate-300 text-slate-900 rounded-tl-none font-semibold shadow-sm'
+                          : 'bg-white border border-slate-300 text-slate-800 rounded-tl-none font-normal shadow-sm'
                       }`}
                     >
                       {msg.agentName && (
-                        <div className="flex items-center justify-between text-[10px] text-cyan-800 border-b border-slate-200 pb-1.5 mb-1.5 font-bold">
+                        <div className="flex items-center justify-between text-[10px] text-cyan-800 border-b border-slate-200 pb-1.5 mb-1.5 font-bold font-sans">
                           <span>{msg.agentName}</span>
-                          <span className="text-slate-500 font-normal">{msg.timestamp}</span>
+                          <span className="text-slate-500 font-normal font-mono">{msg.timestamp}</span>
                         </div>
                       )}
 
-                      <p className={`whitespace-pre-wrap leading-relaxed ${msg.sender === 'user' ? 'text-white font-medium' : 'text-slate-900 font-semibold'}`}>
+                      <p className={`whitespace-pre-wrap leading-relaxed text-xs sm:text-sm font-sans ${msg.sender === 'user' ? 'text-white font-normal' : 'text-slate-800 font-normal'}`}>
                         {msg.content}
                       </p>
 
@@ -3075,9 +3075,9 @@ ${userReposSummary}
                           }
                         }}
                         placeholder="Type your prompt here... Tell AI: 'Create new repo my-app', 'Build software tool', or 'Write code'..."
-                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/30 font-mono shadow-inner min-h-[65px] sm:min-h-[90px] resize-y font-bold"
+                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-600/30 font-sans shadow-inner h-20 sm:h-24 resize-none font-medium leading-normal"
                       />
-                      <div className="flex items-center justify-between pt-1 px-1 text-[10px] font-mono text-slate-600">
+                      <div className="flex items-center justify-between pt-1 px-1 text-[10px] font-sans text-slate-600">
                         <span className="flex items-center space-x-1 truncate">
                           <span className="text-cyan-700 font-bold">💡 Tip:</span>
                           <span className="hidden sm:inline">Press Enter for new line • Ctrl + Enter or click Send to submit</span>
@@ -3093,7 +3093,7 @@ ${userReposSummary}
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl border border-slate-300 transition-colors flex-1 sm:flex-none flex items-center justify-center shadow-sm h-11 sm:h-[90px]"
+                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-xl border border-slate-300 transition-colors flex-1 sm:flex-none flex items-center justify-center shadow-sm h-11 sm:h-24"
                         title="Attach Code / Files"
                       >
                         <Paperclip className="w-5 h-5" />
@@ -3103,7 +3103,7 @@ ${userReposSummary}
                       <button
                         type="submit"
                         disabled={(!chatInput.trim() && attachedFiles.length === 0) || isChatLoading}
-                        className="px-5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl transition-all flex items-center justify-center space-x-2 flex-[2] sm:flex-none disabled:opacity-40 shadow-lg shadow-cyan-600/20 h-11 sm:h-[90px]"
+                        className="px-5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold rounded-xl transition-all flex items-center justify-center space-x-2 flex-[2] sm:flex-none disabled:opacity-40 shadow-lg shadow-cyan-600/20 h-11 sm:h-24"
                       >
                         <Send className="w-4 h-4" />
                         <span className="text-xs font-extrabold">Send Prompt</span>
@@ -5503,15 +5503,15 @@ ${userReposSummary}
                 </div>
 
                 <div
-                  className={`p-3 rounded-xl max-w-[90%] leading-relaxed ${
+                  className={`p-3 rounded-xl max-w-[90%] text-xs sm:text-sm font-sans leading-relaxed ${
                     msg.sender === 'user'
                       ? 'bg-cyan-600 text-white rounded-tr-none'
                       : msg.sender === 'system'
                       ? 'bg-slate-950 border border-slate-800 text-cyan-300 w-full'
-                      : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none'
+                      : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-tl-none font-normal'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <p className="whitespace-pre-wrap text-xs sm:text-sm font-sans leading-relaxed">{msg.content}</p>
 
                   {/* Render Message Attachments */}
                   {msg.attachments && msg.attachments.length > 0 && (
@@ -5611,7 +5611,7 @@ ${userReposSummary}
           {showScrollBottomBtn && (
             <button
               onClick={() => scrollToBottom(true)}
-              className="absolute bottom-16 right-4 z-20 flex items-center space-x-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1.5 rounded-full shadow-lg border border-cyan-300 transition-all text-[11px] animate-bounce"
+              className="absolute bottom-16 right-4 z-20 flex items-center space-x-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1.5 rounded-full shadow-lg border border-cyan-300 transition-all text-[11px]"
             >
               <ChevronDown className="w-3.5 h-3.5" />
               <span>New Messages</span>
@@ -5664,7 +5664,7 @@ ${userReposSummary}
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   placeholder="Ask a question or upload files..."
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-10 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-10 py-2.5 text-xs sm:text-sm font-sans text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-medium"
                 />
                 <button
                   type="submit"
