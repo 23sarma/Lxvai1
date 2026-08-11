@@ -1250,7 +1250,16 @@ export default function App() {
             'x-github-token': cleanToken
           },
           body: JSON.stringify({
-            path: 'AEGIS_AI_MEMORY.md',
+            files: [
+              {
+                path: 'AEGIS_AI_MEMORY.md',
+                content: memoryList.map(m => `### ${m.query}\n- **Tags:** ${m.tags.join(', ')}\n- **Date:** ${m.createdAt}\n${m.response}\n`).join('\n\n') || `# Aegis AI Direct Memory Auto-Sync\nUpdated: ${new Date().toISOString()}`
+              },
+              {
+                path: 'README.md',
+                content: `# ${cleanRepo.toUpperCase()}\n\n> **Live Linked Repository Synchronized via Aegis AI Studio Engine**\n\n### ⚡ Status:\n- **Repository:** [${cleanOwner}/${cleanRepo}](https://github.com/${cleanOwner}/${cleanRepo})\n- **Target Branch:** ${cleanBranch}\n- **Last Sync:** ${new Date().toISOString()}\n- **AI Engine:** Aegis Direct Commit Engine\n`
+              }
+            ],
             message: customCommitMsg.trim() || 'Auto-sync code & neural memories from Aegis AI Engine',
             owner: cleanOwner,
             repo: cleanRepo,
