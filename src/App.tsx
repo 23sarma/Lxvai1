@@ -505,9 +505,9 @@ export default function App() {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-base text-white tracking-tight">AEGIS GEMINI AI</h1>
+                <h1 className="font-bold text-base text-white tracking-tight">AEGIS AI</h1>
                 <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono hidden md:inline">
-                  v3.0 Gemini Experience
+                  Autonomous Universal Engine
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-mono flex items-center space-x-1.5">

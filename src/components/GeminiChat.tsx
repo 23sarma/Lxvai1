@@ -138,10 +138,10 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
 
   // Suggestion Chips
   const suggestions = [
-    { label: '⚡ Add Autonomous Code Mutator Tool', prompt: 'Khud me ek Autonomous Code Mutator Tool add karo aur uske real files bana kar linked GitHub repo me push karo.' },
-    { label: '🛡️ Run Deep Security Audit & Patch', prompt: 'Linked repository ka deep OWASP vulnerability audit karo aur security patch files bana kar push karo.' },
-    { label: '🚀 Engineer Cyber Threat Sentry', prompt: 'Ek naya Real-Time Cyber Threat Sentry AI system khud me integrate karo aur GitHub par commit karo.' },
-    { label: '✍️ Build & Commit Full-Stack Tool', prompt: 'Ek full-stack API testing tool build karo aur complete TypeScript code files GitHub repo me add karo.' }
+    { label: '🔍 Background me kya kam chal raha hai?', prompt: 'Background me kya kam chal raha hai uska poora biborn aur live status dikhao.' },
+    { label: '💡 Naye AI Tools & Models ka abiskar dikhao', prompt: 'Abhi tak background me kitne naye AI tools, AI models aur systems ka abiskar hua hai?' },
+    { label: '⚡ Naya AI System khud me add karo & GitHub par push karo', prompt: 'Khud me ek naya autonomous AI system add karo aur uske real files bana kar linked GitHub repo me push karo.' },
+    { label: '🛡️ Zero-Crash Shield & Self-Healing Status', prompt: 'Zero-Crash Process Shield aur System Self-Healing status check karo.' }
   ];
 
   // Helper to parse code blocks in markdown

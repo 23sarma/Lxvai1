@@ -103,6 +103,15 @@ export interface SubAgent {
   logs: string[];
 }
 
+export interface AegisUniversalSystemProtocol {
+  systemCategory: 'cloud_infrastructure' | 'cyber_sentinel' | 'blockchain_evm' | 'cross_runtime' | 'osint_crawler';
+  name: string;
+  nativeProtocol: string;
+  externalKeyRequired: false;
+  status: 'CONNECTED' | 'SYNTHESIZING' | 'OPTIMIZED';
+  capabilities: string[];
+}
+
 export interface MemoryVector {
   id: string;
   query: string;
