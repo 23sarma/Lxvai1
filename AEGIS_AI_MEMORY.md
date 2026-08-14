@@ -1,11 +1,16 @@
-# Aegis AI Memory: Python Automation Pipelines Engine
+# Aegis Memory Core: Quantum Algorithm Simulator Module
 
-### Architectural Context
-- **Engine**: `PyNexusPipelineEngine` / `python_automation_pipelines_2969.ts`
-- **Target Purpose**: Provide Node.js/TypeScript environments with high-reliability Python task DAG orchestration, automatic IPC input/output mapping, concurrent task scheduling, and isolated child process monitoring.
-- **Design Patterns**: Directed Acyclic Graph (DAG) with Kahn's Algorithm for cycle validation, Event-Driven Stream Telemetry (`EventEmitter`), and Circuit-Broken Retries.
+## Module Specifications
+- **Module ID**: `quantum_algorithm_simulators_2973`
+- **Type**: Autonomous Quantum Computational Logic & Simulation Suite
+- **Capabilities**:
+  1. Complex Arithmetic Core: Polar conversion, Hermitian operations, Matrix transforms.
+  2. Quantum Circuit Modeling: Standard Gates (H, X, Y, Z, S, T, Rx, Ry, Rz, U3, CX, CZ, CCX), QFT / IQFT synthesis.
+  3. Decoherence Channels: Monte Carlo quantum trajectories for Amplitude Damping and Depolarizing noise.
+  4. Grover Search Engine: Auto-inversion oracle with quadratic speedup projection.
+  5. Deutsch-Jozsa Engine: Deterministic characterization of boolean oracle functions.
+  6. Variational Quantum Eigensolver (VQE): Parameterized Ansatz optimization with numerical gradients.
 
-### Key Invariants
-- Every task communicates typed output via tagged telemetry blocks (`---PYNEXUS_DATA_START---`).
-- Dependent tasks inherit resolved upstream outputs in their execution context.
-- Process lifecycles are guaranteed clean termination using graceful `SIGTERM` followed by forceful `SIGKILL` escalation on timeouts.
+## Integration Guidelines
+- Deterministic linear algebraic execution on $2^N$ dimensional Hilbert state vectors.
+- Zero runtime dependencies.
