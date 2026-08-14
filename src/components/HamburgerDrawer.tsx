@@ -28,7 +28,9 @@ import {
   Lock,
   Globe,
   Radio,
-  Cpu
+  Cpu,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { DynamicIntegratedModule, Vulnerability, ScanReport } from '../types';
 
@@ -75,10 +77,94 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
   onSaveGithubConfig,
   onTriggerSelfUpgrade
 }) => {
-  const [activeMenuTab, setActiveMenuTab] = useState<'history' | 'tools' | 'github' | 'universal'>('history');
+  const [activeMenuTab, setActiveMenuTab] = useState<'history' | 'tools' | 'github' | 'universal' | 'apikey'>('history');
   const [universalStatus, setUniversalStatus] = useState<any>(null);
   const [universalRunning, setUniversalRunning] = useState(false);
   const [universalOutput, setUniversalOutput] = useState<string>('');
+
+  // API Key & Online AI State
+  const [apiKeyInputVal, setApiKeyInputVal] = useState<string>('');
+  const [showApiKeyVal, setShowApiKeyVal] = useState<boolean>(false);
+  const [apiKeyStatusData, setApiKeyStatusData] = useState<{
+    isOnline: boolean;
+    hasKey: boolean;
+    isCustomStored: boolean;
+    maskedKey: string;
+    source?: string;
+  } | null>(null);
+  const [isSavingKeyServer, setIsSavingKeyServer] = useState<boolean>(false);
+  const [isTestingKeyServer, setIsTestingKeyServer] = useState<boolean>(false);
+  const [apiKeyDrawerMsg, setApiKeyDrawerMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const fetchDrawerKeyStatus = async () => {
+    try {
+      const res = await fetch('/api/key/status');
+      if (res.ok) {
+        const data = await res.json();
+        setApiKeyStatusData(data);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchDrawerKeyStatus();
+    }
+  }, [isOpen]);
+
+  const handleSaveDrawerKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKeyInputVal.trim() || apiKeyInputVal.trim().length < 8) {
+      setApiKeyDrawerMsg({ text: 'Kripya ek valid Google Gemini API key enter karein.', type: 'error' });
+      return;
+    }
+
+    setIsSavingKeyServer(true);
+    setApiKeyDrawerMsg(null);
+    try {
+      const res = await fetch('/api/key/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKeyInputVal.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setApiKeyDrawerMsg({ text: '✅ Google API Key save ho gayi hai. AEGIS AI ab ONLINE hai!', type: 'success' });
+        setApiKeyInputVal('');
+        fetchDrawerKeyStatus();
+      } else {
+        setApiKeyDrawerMsg({ text: data.error || 'Save fail hua.', type: 'error' });
+      }
+    } catch (err: any) {
+      setApiKeyDrawerMsg({ text: `Error: ${err?.message}`, type: 'error' });
+    } finally {
+      setIsSavingKeyServer(false);
+    }
+  };
+
+  const handleTestDrawerKey = async () => {
+    setIsTestingKeyServer(true);
+    setApiKeyDrawerMsg(null);
+    try {
+      const res = await fetch('/api/key/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKeyInputVal.trim() || undefined })
+      });
+      const data = await res.json();
+      if (data.success && data.isOnline) {
+        setApiKeyDrawerMsg({ text: '🟢 Key Active! Google Gemini Engine Online hai.', type: 'success' });
+      } else {
+        setApiKeyDrawerMsg({ text: data.error || 'Test fail hua.', type: 'error' });
+      }
+    } catch (err: any) {
+      setApiKeyDrawerMsg({ text: `Test Error: ${err?.message}`, type: 'error' });
+    } finally {
+      setIsTestingKeyServer(false);
+    }
+  };
 
   // Tool 1: Code Sandbox State
   const [sandboxCode, setSandboxCode] = useState<string>(`// AI Universal Code & External System Sandbox
@@ -375,29 +461,29 @@ testExternalBridge();
           </div>
 
           {/* Menu Navigation Tabs */}
-          <div className="grid grid-cols-4 p-2 bg-slate-950 border-b border-slate-800 gap-1 text-[11px] font-semibold">
+          <div className="grid grid-cols-5 p-2 bg-slate-950 border-b border-slate-800 gap-1 text-[10px] sm:text-[11px] font-semibold">
             <button
               onClick={() => setActiveMenuTab('history')}
-              className={`py-2 px-2 rounded-xl transition-all flex items-center justify-center space-x-1 ${
+              className={`py-2 px-1.5 rounded-xl transition-all flex items-center justify-center space-x-1 ${
                 activeMenuTab === 'history'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
               }`}
             >
-              <MessageSquare className="w-3.5 h-3.5" />
+              <MessageSquare className="w-3 h-3" />
               <span>History</span>
             </button>
 
             <button
               onClick={() => setActiveMenuTab('tools')}
-              className={`py-2 px-2 rounded-xl transition-all flex items-center justify-center space-x-1 ${
+              className={`py-2 px-1.5 rounded-xl transition-all flex items-center justify-center space-x-1 ${
                 activeMenuTab === 'tools'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
               }`}
             >
-              <Wrench className="w-3.5 h-3.5" />
-              <span>AI Tools</span>
+              <Wrench className="w-3 h-3" />
+              <span>Tools</span>
             </button>
 
             <button
@@ -405,25 +491,40 @@ testExternalBridge();
                 setActiveMenuTab('universal');
                 fetch('/api/universal/status').then(r => r.json()).then(d => setUniversalStatus(d)).catch(() => {});
               }}
-              className={`py-2 px-2 rounded-xl transition-all flex items-center justify-center space-x-1 ${
+              className={`py-2 px-1.5 rounded-xl transition-all flex items-center justify-center space-x-1 ${
                 activeMenuTab === 'universal'
                   ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
                   : 'text-indigo-300 hover:text-white hover:bg-slate-900'
               }`}
             >
-              <Globe className="w-3.5 h-3.5" />
-              <span>Universal</span>
+              <Globe className="w-3 h-3" />
+              <span>Reach</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveMenuTab('apikey');
+                fetchDrawerKeyStatus();
+              }}
+              className={`py-2 px-1.5 rounded-xl transition-all flex items-center justify-center space-x-1 ${
+                activeMenuTab === 'apikey'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-amber-300 hover:text-amber-100 hover:bg-slate-900'
+              }`}
+            >
+              <Key className="w-3 h-3" />
+              <span>API Key</span>
             </button>
 
             <button
               onClick={() => setActiveMenuTab('github')}
-              className={`py-2 px-2 rounded-xl transition-all flex items-center justify-center space-x-1 ${
+              className={`py-2 px-1.5 rounded-xl transition-all flex items-center justify-center space-x-1 ${
                 activeMenuTab === 'github'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
               }`}
             >
-              <Github className="w-3.5 h-3.5" />
+              <Github className="w-3 h-3" />
               <span>GitHub</span>
             </button>
           </div>
@@ -701,7 +802,116 @@ testExternalBridge();
               </div>
             )}
 
-            {/* TAB 4: GITHUB INTEGRATION & REPO SELECTOR */}
+            {/* TAB 4: GOOGLE GEMINI API KEY CONFIGURATION */}
+            {activeMenuTab === 'apikey' && (
+              <div className="space-y-4">
+                <div className="p-4 bg-gradient-to-br from-amber-950/40 via-slate-900 to-cyan-950/30 border border-amber-500/30 rounded-2xl space-y-3">
+                  <div className="flex items-center space-x-2 text-amber-400">
+                    <Key className="w-5 h-5" />
+                    <div>
+                      <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-white">
+                        Google Gemini API Key Config
+                      </h3>
+                      <p className="text-[10px] text-amber-300/80">Keep AEGIS AI Online After Deployment</p>
+                    </div>
+                  </div>
+
+                  {/* Status Indicator */}
+                  <div className="p-3 bg-slate-950/90 border border-amber-500/20 rounded-xl space-y-1.5 text-xs font-mono">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">AI Status:</span>
+                      {apiKeyStatusData?.isOnline ? (
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          ONLINE (Active)
+                        </span>
+                      ) : (
+                        <span className="text-rose-400 font-bold">🔴 Offline (Key Needed)</span>
+                      )}
+                    </div>
+                    {apiKeyStatusData?.hasKey && (
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="text-slate-400">Active Key:</span>
+                        <span className="text-cyan-300 font-bold">{apiKeyStatusData.maskedKey}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notification */}
+                  {apiKeyDrawerMsg && (
+                    <div
+                      className={`p-2.5 rounded-xl text-xs font-mono border ${
+                        apiKeyDrawerMsg.type === 'success'
+                          ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                          : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
+                      }`}
+                    >
+                      {apiKeyDrawerMsg.text}
+                    </div>
+                  )}
+
+                  {/* Form */}
+                  <form onSubmit={handleSaveDrawerKey} className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[11px] font-mono text-slate-300">
+                        <span>Google API Key:</span>
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-cyan-400 hover:text-cyan-300 underline flex items-center gap-1 font-sans"
+                        >
+                          <span>Get Free Key</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showApiKeyVal ? 'text' : 'password'}
+                          value={apiKeyInputVal}
+                          onChange={e => setApiKeyInputVal(e.target.value)}
+                          placeholder="Paste AIzaSy... here"
+                          className="w-full bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs font-mono text-white pr-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKeyVal(!showApiKeyVal)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                        >
+                          {showApiKeyVal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={isSavingKeyServer || !apiKeyInputVal.trim()}
+                        className="flex-1 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs rounded-xl transition flex items-center justify-center space-x-1 disabled:opacity-40"
+                      >
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>{isSavingKeyServer ? 'Saving...' : 'Save & Connect'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleTestDrawerKey}
+                        disabled={isTestingKeyServer}
+                        className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono rounded-xl border border-slate-700 transition"
+                      >
+                        {isTestingKeyServer ? 'Testing...' : 'Test Key'}
+                      </button>
+                    </div>
+                  </form>
+
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    💡 Deployment ke baad bhi yeh API Key disk aur runtime me preserved rahegi. Kisi third-party website ki key lene ki koi zaroorat nahi hai.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: GITHUB INTEGRATION & REPO SELECTOR */}
             {activeMenuTab === 'github' && (
               <div className="space-y-4">
                 {/* 1. Connected Repository Banner & Quick Switcher */}

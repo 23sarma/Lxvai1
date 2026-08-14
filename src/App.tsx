@@ -11,12 +11,14 @@ import {
   RefreshCw,
   Sparkles,
   GitCommit,
-  CheckCircle2
+  CheckCircle2,
+  Key
 } from 'lucide-react';
 import { ChatMessage, AttachedFile, DynamicIntegratedModule } from './types';
 import { GeminiChat } from './components/GeminiChat';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { UpgradeModal } from './components/UpgradeModal';
+import { ApiKeyModal } from './components/ApiKeyModal';
 
 interface ChatSession {
   id: string;
@@ -39,7 +41,26 @@ export default function App() {
   // Hamburger Drawer & Modal States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isAiOnline, setIsAiOnline] = useState<boolean>(true);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
+  // Check live API key & Online status
+  const checkOnlineStatus = async () => {
+    try {
+      const res = await fetch('/api/key/status');
+      if (res.ok) {
+        const data = await res.json();
+        setIsAiOnline(data.isOnline !== false);
+      }
+    } catch (e) {
+      console.log('Key status check error:', e);
+    }
+  };
+
+  useEffect(() => {
+    checkOnlineStatus();
+  }, []);
 
   // GitHub Connection State
   const [githubConfig, setGithubConfig] = useState({
@@ -518,7 +539,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right: Upgrade Alert Button + New Chat + Logout */}
+        {/* Right: Upgrade Alert Button + API Key Config + New Chat + Logout */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Floating Upgrade Button if Upgrade Pending */}
           {pendingUpgrade?.hasUpdate && (
@@ -530,6 +551,21 @@ export default function App() {
               <span>Upgrade Available</span>
             </button>
           )}
+
+          {/* Google API Key Configuration Button */}
+          <button
+            onClick={() => setIsApiKeyModalOpen(true)}
+            className={`py-2 px-3 border rounded-xl text-xs font-bold font-mono transition-all flex items-center space-x-1.5 cursor-pointer ${
+              isAiOnline
+                ? 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border-emerald-500/40'
+                : 'bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border-amber-500/40 animate-pulse'
+            }`}
+            title="Configure Google Gemini API Key"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Google API Key</span>
+            <span className={`w-2 h-2 rounded-full ${isAiOnline ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`} />
+          </button>
 
           <button
             onClick={handleNewChat}
@@ -589,6 +625,15 @@ export default function App() {
         isUpgrading={isUpgrading}
         repoName={`${githubConfig.owner}/${githubConfig.repo}`}
         branchName={githubConfig.branch}
+      />
+
+      {/* Google Gemini API Key Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+        onKeySaved={() => {
+          checkOnlineStatus();
+        }}
       />
     </div>
   );
