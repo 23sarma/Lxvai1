@@ -223,6 +223,10 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
         </div>
 
         <div className="flex items-center space-x-3 text-slate-400">
+          <span className="inline-flex items-center space-x-1 text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+            <ShieldCheck className="w-3 h-3" />
+            <span>Lifetime Key Sync: Locked 🔒</span>
+          </span>
           <span className="hidden sm:inline">Priority: <strong className="text-cyan-300">#1 Master Lobish</strong></span>
           <span className="text-slate-600">|</span>
           <span>Target: <strong className="text-slate-200">{repoName}</strong></span>

@@ -69,19 +69,29 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
       return;
     }
 
+    const clean = apiKeyInput.trim();
     setIsLoading(true);
     setMessage(null);
+
+    // Save to permanent browser storage immediately for lifetime persistence
+    try {
+      localStorage.setItem('aegis_gemini_api_key', clean);
+      localStorage.setItem('aegis_permanent_key_active', 'true');
+    } catch (e) {}
 
     try {
       const res = await fetch('/api/key/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKeyInput.trim() })
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': clean
+        },
+        body: JSON.stringify({ apiKey: clean })
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setMessage({ text: '✅ Google API Key successfully save ho gayi! AEGIS AI ab 100% ONLINE hai.', type: 'success' });
+        setMessage({ text: '✅ Lifetime Permanent Key successfully saved! Har update, restart ya reopen par dubara enter nahi karni padegi.', type: 'success' });
         setApiKeyInput('');
         await fetchKeyStatus();
         if (onKeySaved) onKeySaved();
@@ -98,12 +108,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   const handleTestKey = async () => {
     setIsTesting(true);
     setMessage(null);
+    const candidate = apiKeyInput.trim() || localStorage.getItem('aegis_gemini_api_key') || undefined;
 
     try {
       const res = await fetch('/api/key/test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKeyInput.trim() || undefined })
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(candidate ? { 'x-gemini-api-key': candidate } : {})
+        },
+        body: JSON.stringify({ apiKey: candidate })
       });
 
       const data = await res.json();
@@ -122,6 +136,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   const handleDeleteKey = async () => {
     if (!window.confirm('Kya aap saved Google API Key hatana chahte hain?')) return;
     setIsLoading(true);
+    try {
+      localStorage.removeItem('aegis_gemini_api_key');
+      localStorage.removeItem('aegis_permanent_key_active');
+    } catch (e) {}
     try {
       const res = await fetch('/api/key/delete', { method: 'POST' });
       if (res.ok) {

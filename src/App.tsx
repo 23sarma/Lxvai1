@@ -58,8 +58,27 @@ export default function App() {
     }
   };
 
+  // Lifetime Permanent Key Sync Engine (Runs seamlessly on boot, reload, or reconnect)
+  const syncPermanentApiKey = async () => {
+    try {
+      const savedKey = localStorage.getItem('aegis_gemini_api_key');
+      if (savedKey && savedKey.trim().length > 5) {
+        await fetch('/api/key/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: savedKey.trim() })
+        });
+      }
+      await checkOnlineStatus();
+    } catch (e) {
+      console.log('Key sync error:', e);
+    }
+  };
+
   useEffect(() => {
-    checkOnlineStatus();
+    syncPermanentApiKey();
+    const interval = setInterval(syncPermanentApiKey, 45 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // GitHub Connection State
@@ -286,12 +305,17 @@ export default function App() {
     setIsChatLoading(true);
 
     try {
+      const savedPermanentKey = localStorage.getItem('aegis_gemini_api_key') || '';
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(savedPermanentKey ? { 'x-gemini-api-key': savedPermanentKey } : {})
+        },
         body: JSON.stringify({
           message: content,
           attachments,
+          apiKey: savedPermanentKey || undefined,
           history: currentMessages.slice(-10),
           githubConfig: {
             owner: githubConfig.owner,

@@ -121,17 +121,28 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
       return;
     }
 
+    const clean = apiKeyInputVal.trim();
     setIsSavingKeyServer(true);
     setApiKeyDrawerMsg(null);
+
+    // Save to permanent browser storage for lifetime persistence
+    try {
+      localStorage.setItem('aegis_gemini_api_key', clean);
+      localStorage.setItem('aegis_permanent_key_active', 'true');
+    } catch (e) {}
+
     try {
       const res = await fetch('/api/key/save', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKeyInputVal.trim() })
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': clean
+        },
+        body: JSON.stringify({ apiKey: clean })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setApiKeyDrawerMsg({ text: '✅ Google API Key save ho gayi hai. AEGIS AI ab ONLINE hai!', type: 'success' });
+        setApiKeyDrawerMsg({ text: '✅ Lifetime Permanent Key Saved! Browser reopen ya restart karne par dubara enter nahi karni padegi.', type: 'success' });
         setApiKeyInputVal('');
         fetchDrawerKeyStatus();
       } else {
@@ -147,15 +158,20 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
   const handleTestDrawerKey = async () => {
     setIsTestingKeyServer(true);
     setApiKeyDrawerMsg(null);
+    const candidate = apiKeyInputVal.trim() || localStorage.getItem('aegis_gemini_api_key') || undefined;
+
     try {
       const res = await fetch('/api/key/test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKeyInputVal.trim() || undefined })
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(candidate ? { 'x-gemini-api-key': candidate } : {})
+        },
+        body: JSON.stringify({ apiKey: candidate })
       });
       const data = await res.json();
       if (data.success && data.isOnline) {
-        setApiKeyDrawerMsg({ text: '🟢 Key Active! Google Gemini Engine Online hai.', type: 'success' });
+        setApiKeyDrawerMsg({ text: '🟢 Key Active! Google Gemini Engine Online & Connected hai.', type: 'success' });
       } else {
         setApiKeyDrawerMsg({ text: data.error || 'Test fail hua.', type: 'error' });
       }
