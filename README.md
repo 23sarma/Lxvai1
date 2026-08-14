@@ -1,45 +1,31 @@
-# PyNexus Stream - Python Automation Pipelines Orchestrator
+# AetherQ Simulator
 
-An autonomous, high-throughput TypeScript module designed to coordinate, sandbox, execute, and stream Directed Acyclic Graph (DAG) workflows of Python automation scripts.
-
-## Features
-- **Topological DAG Scheduler**: Automatic dependency resolution and cycle detection using Kahn's algorithm.
-- **Structured Bi-directional IPC**: Seamless exchange of typed inputs and outputs between Python and TypeScript.
-- **Resilience & Fault Tolerance**: Granular retry policies (linear and exponential backoff) and process timeout guards.
-- **Real-Time Telemetry**: Event-driven stdout/stderr log streaming per task node.
-- **Resource Sandbox Management**: Dynamic workspace isolation and cleanup.
+High-performance TypeScript simulation library for quantum algorithms, statevector operations, and variational calculations.
 
 ## Quick Start
 
 typescript
-import { PipelineBuilder } from './src/autonomous_modules/python_automation_pipelines_2969';
+import {
+  QuantumCircuit,
+  QuantumEngine,
+  GroverAlgorithm,
+  DeutschJozsaAlgorithm,
+  VQESolver
+} from './src/autonomous_modules/quantum_algorithm_simulators_2973';
 
-const pipeline = new PipelineBuilder('data-etl-pipeline')
-  .step({
-    id: 'fetch-data',
-    name: 'Fetch Data',
-    scriptContent: `
-pynexus_export({'raw_items': [10, 20, 30, 40]})
-`,
-  })
-  .step({
-    id: 'process-data',
-    name: 'Process Data',
-    dependencies: ['fetch-data'],
-    scriptContent: `
-inp = get_input()
-items = inp['fetch-data']['raw_items']
-squared = [x ** 2 for x in items]
-pynexus_export({'processed_items': squared})
-`,
-  })
-  .build();
+// 1. Run Grover's Algorithm
+const result = GroverAlgorithm.search(3, 5);
+console.log(`Detected Index: ${result.detectedIndex} with probability ${result.successProbability.toFixed(4)}`);
 
-pipeline.on('log', (log) => {
-  console.log(`[${log.taskId}] ${log.message.trim()}`);
-});
+// 2. Solve Variational Quantum Eigensolver for H2 Molecular Analogue
+const h2Hamiltonian = [
+  { coefficient: -1.0523, paulis: {} },
+  { coefficient: 0.3979, paulis: { 0: 'Z' } },
+  { coefficient: -0.3979, paulis: { 1: 'Z' } },
+  { coefficient: -0.0112, paulis: { 0: 'Z', 1: 'Z' } },
+  { coefficient: 0.1809, paulis: { 0: 'X', 1: 'X' } }
+];
 
-const report = await pipeline.executePipeline();
-console.log('Pipeline Result:', report.status);
-await pipeline.cleanup();
+const vqeResult = VQESolver.optimize(h2Hamiltonian as any, 2);
+console.log(`Computed Ground State Energy: ${vqeResult.groundStateEnergy.toFixed(6)} Hartree`);
 
