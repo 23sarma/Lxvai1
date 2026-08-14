@@ -1,9 +1,6 @@
-# PyAutomata: Distributed Python Automation Pipeline Engine
+# QuantumVault Config-Sync
 
-PyAutomata is a high-performance orchestration framework designed to execute, schedule, and monitor Python workflows from TypeScript.
-
-## Features
-- **DAG Graph Resolution**: Automatic topological ordering with cycle detection.
-- **IPC Stream Bridge**: Native JSON messaging between Python and TypeScript processes.
-- **Fault Recovery**: Checkpointing and automated exponential backoff retries.
-- **Shared Pipeline Context**: Downstream tasks automatically receive upstream context variables.
+## Usage
+1. Import `QuantumVaultSync` into your runtime.
+2. Execute `reconcile()` on every service heartbeat.
+3. Access secrets via `getConfig()` for zero-disk latency.
