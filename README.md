@@ -1,30 +1,45 @@
-# AegisStream: Real-time Threat Monitoring Engine
+# PyNexus Stream - Python Automation Pipelines Orchestrator
 
-High-throughput, real-time threat detection utility for streaming telemetry pipelines, network ingress points, and SIEM/SOAR platforms.
+An autonomous, high-throughput TypeScript module designed to coordinate, sandbox, execute, and stream Directed Acyclic Graph (DAG) workflows of Python automation scripts.
 
-## Key Features
-- **High-Performance Stream Processing:** Partitioned sliding-window memory store.
-- **Algorithmic Anomaly Detection:** Shannon Entropy calculation for binary/payload evasion detection.
-- **Adaptive Rule Evaluation:** Includes built-in rules for Brute Force, Data Exfiltration Surges, and Payload Obfuscation.
-- **Extensible Rule API:** Easily plug custom heuristic or behavioral rules.
+## Features
+- **Topological DAG Scheduler**: Automatic dependency resolution and cycle detection using Kahn's algorithm.
+- **Structured Bi-directional IPC**: Seamless exchange of typed inputs and outputs between Python and TypeScript.
+- **Resilience & Fault Tolerance**: Granular retry policies (linear and exponential backoff) and process timeout guards.
+- **Real-Time Telemetry**: Event-driven stdout/stderr log streaming per task node.
+- **Resource Sandbox Management**: Dynamic workspace isolation and cleanup.
 
-## Usage Example
+## Quick Start
 
 typescript
-import { ThreatMonitorEngine, ThreatSeverity } from './src/autonomous_modules/real_time_threat_monitoring_9333';
+import { PipelineBuilder } from './src/autonomous_modules/python_automation_pipelines_2969';
 
-const monitor = new ThreatMonitorEngine();
+const pipeline = new PipelineBuilder('data-etl-pipeline')
+  .step({
+    id: 'fetch-data',
+    name: 'Fetch Data',
+    scriptContent: `
+pynexus_export({'raw_items': [10, 20, 30, 40]})
+`,
+  })
+  .step({
+    id: 'process-data',
+    name: 'Process Data',
+    dependencies: ['fetch-data'],
+    scriptContent: `
+inp = get_input()
+items = inp['fetch-data']['raw_items']
+squared = [x ** 2 for x in items]
+pynexus_export({'processed_items': squared})
+`,
+  })
+  .build();
 
-monitor.on('threatDetected', (alert) => {
-  console.warn(`[THREAT DETECTED] ${alert.ruleName} | Severity: ${alert.severity}`);
-  console.log(`Mitigation: ${alert.mitigationRecommendation}`);
+pipeline.on('log', (log) => {
+  console.log(`[${log.taskId}] ${log.message.trim()}`);
 });
 
-// Simulate Telemetry
-monitor.ingest({
-  id: 'evt-101',
-  timestamp: Date.now(),
-  sourceIp: '198.51.100.42',
-  action: 'LOGIN_FAILED'
-});
+const report = await pipeline.executePipeline();
+console.log('Pipeline Result:', report.status);
+await pipeline.cleanup();
 
