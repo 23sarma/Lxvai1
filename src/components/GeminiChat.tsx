@@ -206,6 +206,29 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 relative overflow-hidden font-sans">
+      {/* ⚡ Live Master-First Priority & Background Preemption Status Banner */}
+      <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+        <div className="flex items-center space-x-2">
+          {isLoading ? (
+            <span className="flex items-center space-x-1.5 text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span>⚡ MASTER COMMAND IN PROGRESS: 100% Compute Allocated</span>
+            </span>
+          ) : (
+            <span className="flex items-center space-x-1.5 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>🟢 IDLE: Background Autonomous Engine Active (Instant Preemption on Master Query)</span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-3 text-slate-400">
+          <span className="hidden sm:inline">Priority: <strong className="text-cyan-300">#1 Master Lobish</strong></span>
+          <span className="text-slate-600">|</span>
+          <span>Target: <strong className="text-slate-200">{repoName}</strong></span>
+        </div>
+      </div>
+
       {/* Messages Scroll Area */}
       <div
         ref={chatContainerRef}

@@ -218,30 +218,37 @@ testExternalBridge();
   const [isNewRepoPrivate, setIsNewRepoPrivate] = useState<boolean>(false);
   const [isCreatingRepo, setIsCreatingRepo] = useState<boolean>(false);
 
-  // Fetch Repositories when GitHub tab opened or Token changed
-  const fetchUserRepositories = async () => {
+  // Fetch Repositories when GitHub tab opened or Token/Owner changed
+  const fetchUserRepositories = async (targetOwnerOverride?: string) => {
     setIsLoadingRepos(true);
     setGhStatusMsg('');
+    const targetOwner = targetOwnerOverride || ghOwner.trim() || '23sarma';
+    const targetToken = ghToken.trim();
+
     try {
-      const res = await fetch('/api/github/repos', {
-        headers: ghToken.trim() ? { 'x-github-token': ghToken.trim() } : {}
+      const res = await fetch(`/api/github/repos?owner=${encodeURIComponent(targetOwner)}&token=${encodeURIComponent(targetToken)}`, {
+        headers: {
+          ...(targetToken ? { 'x-github-token': targetToken } : {}),
+          'x-github-owner': targetOwner
+        }
       });
       const data = await res.json();
-      if (res.ok && data.repos) {
+      if (res.ok && data.repos && Array.isArray(data.repos) && data.repos.length > 0) {
         setUserRepos(data.repos);
-        if (data.repos.length > 0 && !ghRepo) {
+        if (!ghRepo) {
           setGhRepo(data.repos[0].name);
         }
+        setGhStatusMsg(`✅ Loaded ${data.repos.length} repositories for "${targetOwner}" (${data.source === 'authenticated_user' ? 'Authenticated' : 'Public API'})`);
       } else {
         // Fallback default list if offline / preview mode
         setUserRepos([
-          { name: 'Lxvai1', full_name: `${ghOwner || '23sarma'}/Lxvai1`, owner: ghOwner || '23sarma', private: false, html_url: `https://github.com/${ghOwner || '23sarma'}/Lxvai1`, default_branch: 'main' }
+          { name: 'Lxvai1', full_name: `${targetOwner}/Lxvai1`, owner: targetOwner, private: false, html_url: `https://github.com/${targetOwner}/Lxvai1`, default_branch: 'main' }
         ]);
       }
     } catch (e: any) {
       console.log('GitHub fetch fallback engaged');
       setUserRepos([
-        { name: 'Lxvai1', full_name: `${ghOwner || '23sarma'}/Lxvai1`, owner: ghOwner || '23sarma', private: false, html_url: `https://github.com/${ghOwner || '23sarma'}/Lxvai1`, default_branch: 'main' }
+        { name: 'Lxvai1', full_name: `${targetOwner}/Lxvai1`, owner: targetOwner, private: false, html_url: `https://github.com/${targetOwner}/Lxvai1`, default_branch: 'main' }
       ]);
     } finally {
       setIsLoadingRepos(false);
@@ -964,10 +971,21 @@ testExternalBridge();
                         <Layers className="w-3.5 h-3.5 text-cyan-400" />
                         <span>Select / Switch Repository:</span>
                       </label>
-                      <span className="text-[10px] font-mono text-slate-500">
+                      <span className="text-[10px] font-mono text-slate-400 font-bold">
                         {userRepos.length} Repos Found
                       </span>
                     </div>
+
+                    {/* Quick Search & Filter */}
+                    {userRepos.length > 5 && (
+                      <input
+                        type="text"
+                        value={repoFilter}
+                        onChange={e => setRepoFilter(e.target.value)}
+                        placeholder="Search repositories..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-cyan-500 mb-1"
+                      />
+                    )}
 
                     <div className="relative">
                       <select
@@ -982,14 +1000,63 @@ testExternalBridge();
                         }}
                         className="w-full bg-slate-900 border border-slate-800 focus:border-cyan-500 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none cursor-pointer"
                       >
-                        {userRepos.map((repo) => (
-                          <option key={repo.full_name || repo.name} value={repo.name}>
-                            {repo.full_name || `${ghOwner}/${repo.name}`} {repo.private ? '🔒 (Private)' : '🌐 (Public)'}
-                          </option>
+                        {userRepos
+                          .filter(r => !repoFilter || r.name.toLowerCase().includes(repoFilter.toLowerCase()) || (r.full_name && r.full_name.toLowerCase().includes(repoFilter.toLowerCase())))
+                          .map((repo) => (
+                            <option key={repo.full_name || repo.name} value={repo.name}>
+                              {repo.full_name || `${ghOwner}/${repo.name}`} {repo.private ? '🔒 (Private)' : '🌐 (Public)'}
+                            </option>
                         ))}
                       </select>
                     </div>
                   </div>
+
+                  {/* Quick Selectable Repo Chips (Scrollable list of first 8 repos) */}
+                  {userRepos.length > 1 && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono text-slate-400 uppercase">Available Repositories (1-Click Switch):</label>
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {userRepos
+                          .filter(r => !repoFilter || r.name.toLowerCase().includes(repoFilter.toLowerCase()))
+                          .slice(0, 15)
+                          .map(repo => {
+                            const isSelected = ghRepo === repo.name;
+                            return (
+                              <div
+                                key={repo.full_name || repo.name}
+                                className={`flex items-center justify-between p-1.5 rounded-lg border text-[11px] font-mono transition-all ${
+                                  isSelected 
+                                    ? 'bg-cyan-950/60 border-cyan-500/50 text-cyan-300' 
+                                    : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 text-slate-300'
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectRepo(repo)}
+                                  className="flex-1 text-left flex items-center space-x-1.5 truncate cursor-pointer"
+                                >
+                                  <FolderGit2 className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`} />
+                                  <span className="truncate font-semibold">{repo.name}</span>
+                                  <span className="text-[9px] px-1 rounded bg-slate-800 text-slate-400 shrink-0">
+                                    {repo.private ? '🔒' : '🌐'}
+                                  </span>
+                                </button>
+
+                                <a
+                                  href={repo.html_url || `https://github.com/${ghOwner}/${repo.name}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-slate-500 hover:text-cyan-400 p-1 shrink-0"
+                                  title="Open repository on GitHub"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Button to Create Brand New Repository */}
                   <button
