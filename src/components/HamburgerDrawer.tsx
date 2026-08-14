@@ -33,6 +33,12 @@ import {
   EyeOff
 } from 'lucide-react';
 import { DynamicIntegratedModule, Vulnerability, ScanReport } from '../types';
+import { 
+  autoRepairAndCleanApiKey, 
+  safeJsonFetch, 
+  setStoredClientApiKey, 
+  getStoredClientApiKey 
+} from '../utils/apiKeyHelper';
 
 interface GitHubRepoItem {
   name: string;
@@ -98,9 +104,8 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
 
   const fetchDrawerKeyStatus = async () => {
     try {
-      const res = await fetch('/api/key/status');
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await safeJsonFetch('/api/key/status');
+      if (ok && data) {
         setApiKeyStatusData(data);
       }
     } catch (e) {
@@ -111,28 +116,30 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchDrawerKeyStatus();
+      // Auto-load saved client key into input if present
+      const clientKey = getStoredClientApiKey();
+      if (clientKey && !apiKeyInputVal) {
+        setApiKeyInputVal(clientKey);
+      }
     }
   }, [isOpen]);
 
   const handleSaveDrawerKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKeyInputVal.trim() || apiKeyInputVal.trim().length < 8) {
-      setApiKeyDrawerMsg({ text: 'Kripya ek valid Google Gemini API key enter karein.', type: 'error' });
+    const clean = autoRepairAndCleanApiKey(apiKeyInputVal);
+    if (!clean || clean.length < 15) {
+      setApiKeyDrawerMsg({ text: 'Kripya ek valid Google Gemini API Key paste karein (e.g. AIzaSy...).', type: 'error' });
       return;
     }
 
-    const clean = apiKeyInputVal.trim();
     setIsSavingKeyServer(true);
     setApiKeyDrawerMsg(null);
 
     // Save to permanent browser storage for lifetime persistence
-    try {
-      localStorage.setItem('aegis_gemini_api_key', clean);
-      localStorage.setItem('aegis_permanent_key_active', 'true');
-    } catch (e) {}
+    setStoredClientApiKey(clean);
 
     try {
-      const res = await fetch('/api/key/save', {
+      const { ok, data } = await safeJsonFetch('/api/key/save', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -140,16 +147,18 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
         },
         body: JSON.stringify({ apiKey: clean })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setApiKeyDrawerMsg({ text: '✅ Lifetime Permanent Key Saved! Browser reopen ya restart karne par dubara enter nahi karni padegi.', type: 'success' });
-        setApiKeyInputVal('');
+
+      if (ok && data && (data.success || data.saved)) {
+        const notice = data.cleanedKeyDetected ? ' (Key auto-sanitized & repaired)' : '';
+        setApiKeyDrawerMsg({ text: `✅ Lifetime Permanent Key Saved${notice}! AI 100% ONLINE hai. Ab dubara enter nahi karni padegi.`, type: 'success' });
+        setApiKeyInputVal(clean);
         fetchDrawerKeyStatus();
+        window.dispatchEvent(new CustomEvent('aegis_key_updated'));
       } else {
-        setApiKeyDrawerMsg({ text: data.error || 'Save fail hua.', type: 'error' });
+        setApiKeyDrawerMsg({ text: data?.error || 'Save fail hua.', type: 'error' });
       }
     } catch (err: any) {
-      setApiKeyDrawerMsg({ text: `Error: ${err?.message}`, type: 'error' });
+      setApiKeyDrawerMsg({ text: `Error: ${err?.message || 'Server connection issue'}`, type: 'error' });
     } finally {
       setIsSavingKeyServer(false);
     }
@@ -158,10 +167,10 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
   const handleTestDrawerKey = async () => {
     setIsTestingKeyServer(true);
     setApiKeyDrawerMsg(null);
-    const candidate = apiKeyInputVal.trim() || localStorage.getItem('aegis_gemini_api_key') || undefined;
+    const candidate = autoRepairAndCleanApiKey(apiKeyInputVal) || getStoredClientApiKey() || undefined;
 
     try {
-      const res = await fetch('/api/key/test', {
+      const { ok, data } = await safeJsonFetch('/api/key/test', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -169,14 +178,17 @@ export const HamburgerDrawer: React.FC<HamburgerDrawerProps> = ({
         },
         body: JSON.stringify({ apiKey: candidate })
       });
-      const data = await res.json();
-      if (data.success && data.isOnline) {
-        setApiKeyDrawerMsg({ text: '🟢 Key Active! Google Gemini Engine Online & Connected hai.', type: 'success' });
+
+      if (data && data.success && data.isOnline) {
+        setApiKeyDrawerMsg({ text: '🟢 Key Active! Google Gemini Engine Online & Verified Connected hai.', type: 'success' });
+        if (candidate) setStoredClientApiKey(candidate);
+        fetchDrawerKeyStatus();
+        window.dispatchEvent(new CustomEvent('aegis_key_updated'));
       } else {
-        setApiKeyDrawerMsg({ text: data.error || 'Test fail hua.', type: 'error' });
+        setApiKeyDrawerMsg({ text: data?.error || 'Test fail hua. Check karein ki key valid hai.', type: 'error' });
       }
     } catch (err: any) {
-      setApiKeyDrawerMsg({ text: `Test Error: ${err?.message}`, type: 'error' });
+      setApiKeyDrawerMsg({ text: `Test Error: ${err?.message || 'Verification issue'}`, type: 'error' });
     } finally {
       setIsTestingKeyServer(false);
     }

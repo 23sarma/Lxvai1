@@ -19,6 +19,12 @@ import { GeminiChat } from './components/GeminiChat';
 import { HamburgerDrawer } from './components/HamburgerDrawer';
 import { UpgradeModal } from './components/UpgradeModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
+import { 
+  autoRepairAndCleanApiKey, 
+  safeJsonFetch, 
+  setStoredClientApiKey, 
+  getStoredClientApiKey 
+} from './utils/apiKeyHelper';
 
 interface ChatSession {
   id: string;
@@ -48,9 +54,8 @@ export default function App() {
   // Check live API key & Online status
   const checkOnlineStatus = async () => {
     try {
-      const res = await fetch('/api/key/status');
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await safeJsonFetch('/api/key/status');
+      if (ok && data) {
         setIsAiOnline(data.isOnline !== false);
       }
     } catch (e) {
@@ -61,12 +66,12 @@ export default function App() {
   // Lifetime Permanent Key Sync Engine (Runs seamlessly on boot, reload, or reconnect)
   const syncPermanentApiKey = async () => {
     try {
-      const savedKey = localStorage.getItem('aegis_gemini_api_key');
-      if (savedKey && savedKey.trim().length > 5) {
-        await fetch('/api/key/sync', {
+      const savedKey = getStoredClientApiKey();
+      if (savedKey && savedKey.length > 10) {
+        await safeJsonFetch('/api/key/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey: savedKey.trim() })
+          body: JSON.stringify({ apiKey: savedKey })
         });
       }
       await checkOnlineStatus();
@@ -78,7 +83,12 @@ export default function App() {
   useEffect(() => {
     syncPermanentApiKey();
     const interval = setInterval(syncPermanentApiKey, 45 * 1000);
-    return () => clearInterval(interval);
+    const handleKeyUpdated = () => syncPermanentApiKey();
+    window.addEventListener('aegis_key_updated', handleKeyUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('aegis_key_updated', handleKeyUpdated);
+    };
   }, []);
 
   // GitHub Connection State
@@ -305,8 +315,8 @@ export default function App() {
     setIsChatLoading(true);
 
     try {
-      const savedPermanentKey = localStorage.getItem('aegis_gemini_api_key') || '';
-      const res = await fetch('/api/chat', {
+      const savedPermanentKey = getStoredClientApiKey();
+      const { data } = await safeJsonFetch('/api/chat', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -326,13 +336,11 @@ export default function App() {
         })
       });
 
-      const data = await res.json();
-
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         agentName: 'Aegis Autonomous AI',
-        content: data.reply || 'Request completed successfully.',
+        content: data?.reply || data?.error || 'Request completed successfully.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 

@@ -15,6 +15,13 @@ import {
   Sparkles,
   Server
 } from 'lucide-react';
+import { 
+  autoRepairAndCleanApiKey, 
+  safeJsonFetch, 
+  setStoredClientApiKey, 
+  getStoredClientApiKey,
+  clearStoredClientApiKey
+} from '../utils/apiKeyHelper';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -44,9 +51,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
 
   const fetchKeyStatus = async () => {
     try {
-      const res = await fetch('/api/key/status');
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await safeJsonFetch('/api/key/status');
+      if (ok && data) {
         setKeyStatus(data);
       }
     } catch (e) {
@@ -58,29 +64,31 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
     if (isOpen) {
       fetchKeyStatus();
       setMessage(null);
-      setApiKeyInput('');
+      const clientKey = getStoredClientApiKey();
+      if (clientKey) {
+        setApiKeyInput(clientKey);
+      } else {
+        setApiKeyInput('');
+      }
     }
   }, [isOpen]);
 
   const handleSaveKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKeyInput.trim() || apiKeyInput.trim().length < 8) {
+    const clean = autoRepairAndCleanApiKey(apiKeyInput);
+    if (!clean || clean.length < 15) {
       setMessage({ text: 'Kripya ek valid Google Gemini API Key enter karein (e.g. AIzaSy...).', type: 'error' });
       return;
     }
 
-    const clean = apiKeyInput.trim();
     setIsLoading(true);
     setMessage(null);
 
     // Save to permanent browser storage immediately for lifetime persistence
-    try {
-      localStorage.setItem('aegis_gemini_api_key', clean);
-      localStorage.setItem('aegis_permanent_key_active', 'true');
-    } catch (e) {}
+    setStoredClientApiKey(clean);
 
     try {
-      const res = await fetch('/api/key/save', {
+      const { ok, data } = await safeJsonFetch('/api/key/save', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -89,14 +97,15 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         body: JSON.stringify({ apiKey: clean })
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMessage({ text: '✅ Lifetime Permanent Key successfully saved! Har update, restart ya reopen par dubara enter nahi karni padegi.', type: 'success' });
-        setApiKeyInput('');
+      if (ok && data && (data.success || data.saved)) {
+        const notice = data.cleanedKeyDetected ? ' (Auto-Repaired)' : '';
+        setMessage({ text: `✅ Lifetime Permanent Key successfully saved${notice}! Har update, restart ya reopen par dubara enter nahi karni padegi.`, type: 'success' });
+        setApiKeyInput(clean);
         await fetchKeyStatus();
+        window.dispatchEvent(new CustomEvent('aegis_key_updated'));
         if (onKeySaved) onKeySaved();
       } else {
-        setMessage({ text: data.error || 'API Key save nahi ho saki.', type: 'error' });
+        setMessage({ text: data?.error || 'API Key save nahi ho saki.', type: 'error' });
       }
     } catch (err: any) {
       setMessage({ text: `Connection error: ${err?.message || 'Server tak reach nahi ho payi'}`, type: 'error' });
@@ -108,10 +117,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   const handleTestKey = async () => {
     setIsTesting(true);
     setMessage(null);
-    const candidate = apiKeyInput.trim() || localStorage.getItem('aegis_gemini_api_key') || undefined;
+    const candidate = autoRepairAndCleanApiKey(apiKeyInput) || getStoredClientApiKey() || undefined;
 
     try {
-      const res = await fetch('/api/key/test', {
+      const { ok, data } = await safeJsonFetch('/api/key/test', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -120,11 +129,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
         body: JSON.stringify({ apiKey: candidate })
       });
 
-      const data = await res.json();
-      if (data.success && data.isOnline) {
+      if (data && data.success && data.isOnline) {
         setMessage({ text: '🟢 Success! Google API Key 100% active, online aur working hai.', type: 'success' });
+        if (candidate) setStoredClientApiKey(candidate);
+        await fetchKeyStatus();
+        window.dispatchEvent(new CustomEvent('aegis_key_updated'));
       } else {
-        setMessage({ text: data.error || 'Test fail hua. Kripya check karein ki key sahi hai.', type: 'error' });
+        setMessage({ text: data?.error || 'Test fail hua. Kripya check karein ki key sahi hai.', type: 'error' });
       }
     } catch (err: any) {
       setMessage({ text: `Test error: ${err?.message}`, type: 'error' });
@@ -136,15 +147,13 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
   const handleDeleteKey = async () => {
     if (!window.confirm('Kya aap saved Google API Key hatana chahte hain?')) return;
     setIsLoading(true);
+    clearStoredClientApiKey();
     try {
-      localStorage.removeItem('aegis_gemini_api_key');
-      localStorage.removeItem('aegis_permanent_key_active');
-    } catch (e) {}
-    try {
-      const res = await fetch('/api/key/delete', { method: 'POST' });
-      if (res.ok) {
+      const { ok } = await safeJsonFetch('/api/key/delete', { method: 'POST' });
+      if (ok) {
         setMessage({ text: 'Saved API Key successfully remove ho gayi.', type: 'info' });
         await fetchKeyStatus();
+        window.dispatchEvent(new CustomEvent('aegis_key_updated'));
         if (onKeySaved) onKeySaved();
       }
     } catch (err) {

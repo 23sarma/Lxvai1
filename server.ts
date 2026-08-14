@@ -10,20 +10,6 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Lifetime Key Auto-Capture Middleware (Extracts key from all incoming headers/payloads seamlessly)
-app.use((req, res, next) => {
-  const headerKey = (req.headers['x-gemini-api-key'] as string) || '';
-  const bodyKey = (req.body && typeof req.body === 'object') ? (req.body.geminiApiKey || req.body.apiKey) : null;
-  const rawCandidate = headerKey || bodyKey;
-  if (rawCandidate && typeof rawCandidate === 'string' && rawCandidate.trim().length > 8) {
-    const clean = rawCandidate.trim();
-    if (clean !== globalPermanentApiKey) {
-      saveStoredApiKey(clean);
-    }
-  }
-  next();
-});
-
 // Preserve system-injected GEMINI_API_KEY from environment
 const SYSTEM_ENV_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
@@ -36,13 +22,40 @@ const KEY_STORE_PATHS = [
 
 let globalPermanentApiKey: string = process.env.GEMINI_API_KEY || '';
 
+// Intelligent Self-Repair & Auto-Sanitization Engine for Google API Keys
+export function autoRepairAndCleanApiKey(rawInput: any): string {
+  if (!rawInput || typeof rawInput !== 'string') return '';
+  let str = String(rawInput).trim();
+  if (!str) return '';
+
+  // Remove zero-width spaces, invisible unicode, HTML entities, and outer quotes
+  str = str.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '').trim();
+  str = str.replace(/^["'`]|["'`]$/g, '').trim();
+
+  // 1. Precise Regex Extraction for standard Google Gemini API Keys (AIzaSy...)
+  const aizaMatch = str.match(/AIza[0-9A-Za-z-_]{30,45}/);
+  if (aizaMatch && aizaMatch[0]) {
+    return aizaMatch[0];
+  }
+
+  // 2. If embedded in a URL or query string (e.g. key=AIza... or api_key=...)
+  const queryMatch = str.match(/(?:key|api_key|token)=([0-9A-Za-z-_]{25,50})/i);
+  if (queryMatch && queryMatch[1]) {
+    return queryMatch[1];
+  }
+
+  // 3. General cleanup: strip non-standard characters, spaces, and punctuation
+  str = str.replace(/[\s\r\n\t,;:"'\\/<>]/g, '');
+  return str;
+}
+
 function getStoredApiKey(): string {
   if (globalPermanentApiKey && globalPermanentApiKey.trim().length > 5) {
-    return globalPermanentApiKey.trim();
+    return autoRepairAndCleanApiKey(globalPermanentApiKey);
   }
 
   if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 5) {
-    globalPermanentApiKey = process.env.GEMINI_API_KEY.trim();
+    globalPermanentApiKey = autoRepairAndCleanApiKey(process.env.GEMINI_API_KEY);
     return globalPermanentApiKey;
   }
 
@@ -51,7 +64,7 @@ function getStoredApiKey(): string {
       if (fs.existsSync(storePath)) {
         const data = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
         if (data && data.apiKey && typeof data.apiKey === 'string' && data.apiKey.trim().length > 5) {
-          globalPermanentApiKey = data.apiKey.trim();
+          globalPermanentApiKey = autoRepairAndCleanApiKey(data.apiKey);
           process.env.GEMINI_API_KEY = globalPermanentApiKey;
           return globalPermanentApiKey;
         }
@@ -66,8 +79,8 @@ function getStoredApiKey(): string {
 
 function saveStoredApiKey(key: string): boolean {
   try {
-    if (key && key.trim().length > 5) {
-      const cleanKey = key.trim();
+    const cleanKey = autoRepairAndCleanApiKey(key);
+    if (cleanKey && cleanKey.length > 5) {
       globalPermanentApiKey = cleanKey;
       process.env.GEMINI_API_KEY = cleanKey;
 
@@ -95,6 +108,24 @@ function saveStoredApiKey(key: string): boolean {
   }
   return false;
 }
+
+// Lifetime Key Auto-Capture Middleware (Extracts key from all incoming headers/payloads seamlessly)
+app.use((req, res, next) => {
+  try {
+    const headerKey = (req.headers['x-gemini-api-key'] as string) || '';
+    const bodyKey = (req.body && typeof req.body === 'object') ? (req.body.geminiApiKey || req.body.apiKey) : null;
+    const rawCandidate = headerKey || bodyKey;
+    if (rawCandidate && typeof rawCandidate === 'string' && rawCandidate.trim().length > 8) {
+      const clean = autoRepairAndCleanApiKey(rawCandidate);
+      if (clean && clean !== globalPermanentApiKey) {
+        saveStoredApiKey(clean);
+      }
+    }
+  } catch (midErr) {
+    // Non-blocking middleware
+  }
+  next();
+});
 
 // Load permanently saved API Key on boot
 const loadedSavedKey = getStoredApiKey();
@@ -3212,65 +3243,89 @@ app.get('/api/key/status', (req, res) => {
 });
 
 app.post('/api/key/save', async (req, res) => {
-  const { apiKey } = req.body;
-  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 8) {
-    return res.status(400).json({ success: false, error: 'Kripya valid Google Gemini API Key (e.g. AIzaSy...) enter karein.' });
-  }
-
-  const cleanKey = apiKey.trim();
-  const saved = saveStoredApiKey(cleanKey);
-  process.env.GEMINI_API_KEY = cleanKey;
-
-  // Attempt live lightweight handshake
-  let verificationStatus = 'SAVED_AND_ACTIVE';
   try {
-    const testAi = new GoogleGenAI({ apiKey: cleanKey });
-    await testAi.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: 'ping'
+    const rawKey = req.body?.apiKey;
+    const cleanKey = autoRepairAndCleanApiKey(rawKey);
+    
+    if (!cleanKey || cleanKey.length < 15) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid API Key format. Google Gemini key typically starts with AIzaSy... (Auto-repair could not find a valid token).' 
+      });
+    }
+
+    const saved = saveStoredApiKey(cleanKey);
+    process.env.GEMINI_API_KEY = cleanKey;
+
+    // Live fast validation ping
+    let isLiveValid = true;
+    let pingMsg = 'Connected';
+    try {
+      const testAi = new GoogleGenAI({ 
+        apiKey: cleanKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+      await testAi.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: 'ping'
+      });
+    } catch (err: any) {
+      pingMsg = err?.message || 'Verification note';
+      // If error is forbidden/invalid
+      if (pingMsg.includes('403') || pingMsg.includes('API_KEY_INVALID') || pingMsg.includes('leaked')) {
+        isLiveValid = false;
+      }
+    }
+
+    res.json({
+      success: true,
+      saved: true,
+      isOnline: isLiveValid,
+      status: isLiveValid ? 'VERIFIED_ACTIVE' : 'SAVED_WITH_NOTICE',
+      message: isLiveValid 
+        ? '✅ Google Gemini API Key Auto-Repaired & 100% ONLINE! Lifetime storage locked.' 
+        : `Key saved, note: ${pingMsg.slice(0, 100)}`,
+      cleanedKeyDetected: cleanKey !== rawKey,
+      maskedKey: `${cleanKey.substring(0, 7)}...${cleanKey.substring(cleanKey.length - 4)}`
     });
   } catch (err: any) {
-    console.log('[API KEY SAVED] Live ping verification response:', err?.message);
+    res.status(500).json({ success: false, error: `Key save error: ${err?.message || 'Server error'}` });
   }
-
-  res.json({
-    success: true,
-    saved: true,
-    isOnline: true,
-    status: verificationStatus,
-    message: 'Google API Key safaltapoorvak save ho gayi hai. AEGIS AI ab 100% ONLINE hai!',
-    maskedKey: `${cleanKey.substring(0, 7)}...${cleanKey.substring(cleanKey.length - 4)}`
-  });
 });
 
 // Automatic Lifetime Handshake & Key Synchronization Route
 app.post('/api/key/sync', async (req, res) => {
-  const { apiKey } = req.body || {};
-  if (apiKey && typeof apiKey === 'string' && apiKey.trim().length > 8) {
-    saveStoredApiKey(apiKey.trim());
-    return res.json({
-      success: true,
-      synced: true,
-      isOnline: true,
-      maskedKey: `${apiKey.trim().substring(0, 7)}...${apiKey.trim().substring(apiKey.trim().length - 4)}`,
-      message: 'Lifetime Permanent Key successfully synchronized with server!'
-    });
-  }
+  try {
+    const { apiKey } = req.body || {};
+    const clean = autoRepairAndCleanApiKey(apiKey);
+    if (clean && clean.length > 15) {
+      saveStoredApiKey(clean);
+      return res.json({
+        success: true,
+        synced: true,
+        isOnline: true,
+        maskedKey: `${clean.substring(0, 7)}...${clean.substring(clean.length - 4)}`,
+        message: 'Lifetime Permanent Key successfully synchronized with server!'
+      });
+    }
 
-  const currentKey = getStoredApiKey();
-  const hasValid = Boolean(currentKey && currentKey.length > 8);
-  res.json({
-    success: true,
-    hasKey: hasValid,
-    isOnline: hasValid,
-    maskedKey: hasValid ? `${currentKey.substring(0, 7)}...${currentKey.substring(currentKey.length - 4)}` : ''
-  });
+    const currentKey = getStoredApiKey();
+    const hasValid = Boolean(currentKey && currentKey.length > 15);
+    res.json({
+      success: true,
+      hasKey: hasValid,
+      isOnline: hasValid,
+      maskedKey: hasValid ? `${currentKey.substring(0, 7)}...${currentKey.substring(currentKey.length - 4)}` : ''
+    });
+  } catch (err: any) {
+    res.json({ success: false, error: err?.message || 'Sync error' });
+  }
 });
 
 // Self-Healing Connection Keeper Heartbeat (Keeps sockets warm & heals any temporary disconnects)
 setInterval(async () => {
   const activeKey = getStoredApiKey();
-  if (activeKey && activeKey.length > 8) {
+  if (activeKey && activeKey.length > 15) {
     try {
       const pingAi = new GoogleGenAI({
         apiKey: activeKey,
@@ -3290,31 +3345,39 @@ setInterval(async () => {
 }, 45 * 1000);
 
 app.post('/api/key/test', async (req, res) => {
-  const targetKey = req.body.apiKey?.trim() || getStoredApiKey() || process.env.GEMINI_API_KEY || SYSTEM_ENV_GEMINI_KEY;
-  if (!targetKey || targetKey.length < 8) {
-    return res.status(400).json({ success: false, isOnline: false, error: 'Koi Google API key uplabdh nahi hai test karne ke liye.' });
-  }
-
   try {
-    const testAi = new GoogleGenAI({ apiKey: targetKey });
-    const result = await testAi.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: 'Respond only with: AEGIS_ONLINE_OK'
-    });
-    const text = result.text || 'AEGIS_ONLINE_OK';
-    res.json({
-      success: true,
-      isOnline: true,
-      status: 'VERIFIED_ONLINE',
-      message: 'Google Gemini API Key 100% Active, Valid & Online!',
-      sampleResponse: text.trim()
-    });
-  } catch (err: any) {
-    res.json({
-      success: false,
-      isOnline: false,
-      error: `API Key Test Note: ${err?.message || 'Verification returned unexpected response'}`
-    });
+    const raw = req.body.apiKey;
+    const targetKey = autoRepairAndCleanApiKey(raw) || getStoredApiKey() || process.env.GEMINI_API_KEY || SYSTEM_ENV_GEMINI_KEY;
+    if (!targetKey || targetKey.length < 15) {
+      return res.status(400).json({ success: false, isOnline: false, error: 'Koi valid Google API key nahi mili test karne ke liye.' });
+    }
+
+    try {
+      const testAi = new GoogleGenAI({ 
+        apiKey: targetKey,
+        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+      });
+      const result = await testAi.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: 'Respond only with: AEGIS_ONLINE_OK'
+      });
+      const text = result.text || 'AEGIS_ONLINE_OK';
+      res.json({
+        success: true,
+        isOnline: true,
+        status: 'VERIFIED_ONLINE',
+        message: 'Google Gemini API Key 100% Active, Valid & Online!',
+        sampleResponse: text.trim()
+      });
+    } catch (err: any) {
+      res.json({
+        success: false,
+        isOnline: false,
+        error: `API Key Test Note: ${err?.message || 'Verification returned unexpected response'}`
+      });
+    }
+  } catch (outerErr: any) {
+    res.status(500).json({ success: false, isOnline: false, error: outerErr?.message || 'Test exception' });
   }
 });
 
