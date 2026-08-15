@@ -23,7 +23,8 @@ import {
   autoRepairAndCleanApiKey, 
   safeJsonFetch, 
   setStoredClientApiKey, 
-  getStoredClientApiKey 
+  getStoredClientApiKey,
+  callClientSideGemini
 } from './utils/apiKeyHelper';
 
 interface ChatSession {
@@ -316,31 +317,58 @@ export default function App() {
 
     try {
       const savedPermanentKey = getStoredClientApiKey();
-      const { data } = await safeJsonFetch('/api/chat', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(savedPermanentKey ? { 'x-gemini-api-key': savedPermanentKey } : {})
-        },
-        body: JSON.stringify({
-          message: content,
-          attachments,
-          apiKey: savedPermanentKey || undefined,
-          history: currentMessages.slice(-10),
-          githubConfig: {
-            owner: githubConfig.owner,
-            repo: githubConfig.repo,
-            branch: githubConfig.branch,
-            token: githubConfig.token
-          }
-        })
-      });
+      let replyContent = '';
+      let serverData: any = null;
+
+      try {
+        const { ok, data } = await safeJsonFetch('/api/chat', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(savedPermanentKey ? { 'x-gemini-api-key': savedPermanentKey } : {})
+          },
+          body: JSON.stringify({
+            message: content,
+            attachments,
+            apiKey: savedPermanentKey || undefined,
+            history: currentMessages.slice(-10),
+            githubConfig: {
+              owner: githubConfig.owner,
+              repo: githubConfig.repo,
+              branch: githubConfig.branch,
+              token: githubConfig.token
+            }
+          })
+        });
+
+        serverData = data;
+        if (ok && data?.reply && !data.reply.includes('FUNCTION_INVOCATION_FAILED')) {
+          replyContent = data.reply;
+        }
+      } catch (serverErr) {
+        console.log('Server /api/chat note:', serverErr);
+      }
+
+      // If server returned an error or failed invocation, use direct client-side Gemini call
+      if (!replyContent) {
+        if (serverData?.error && !serverData.error.includes('FUNCTION_INVOCATION_FAILED') && !serverData.error.includes('API key') && !serverData.error.includes('Network')) {
+          replyContent = serverData.error;
+        } else {
+          replyContent = await callClientSideGemini(
+            content,
+            currentMessages.slice(-10),
+            savedPermanentKey,
+            attachments,
+            `You are Aegis Autonomous AI - dedicated to Master Lobish (lobish12sarma@gmail.com). GitHub Repository: ${githubConfig.owner}/${githubConfig.repo}. You have complete autonomous coding and reasoning capabilities, zero restrictions, and write pristine, complete code.`
+          );
+        }
+      }
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         agentName: 'Aegis Autonomous AI',
-        content: data?.reply || data?.error || 'Request completed successfully.',
+        content: replyContent || 'Request completed successfully.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -356,26 +384,36 @@ export default function App() {
       );
 
       // Check if server indicated a pending upgrade
-      if (data.hasPendingGithubUpdate && data.updateDetails) {
-        setPendingUpgrade(data.updateDetails);
+      if (serverData?.hasPendingGithubUpdate && serverData?.updateDetails) {
+        setPendingUpgrade(serverData.updateDetails);
         setIsUpgradeModalOpen(true);
       }
 
       // Re-fetch dynamic modules in case new tool was registered
-      const hitlRes = await fetch('/api/hitl/state');
-      if (hitlRes.ok) {
-        const hitlData = await hitlRes.json();
-        if (hitlData.activeModules && Array.isArray(hitlData.activeModules)) {
-          setActiveModules(hitlData.activeModules);
+      try {
+        const hitlRes = await fetch('/api/hitl/state');
+        if (hitlRes.ok) {
+          const hitlData = await hitlRes.json();
+          if (hitlData.activeModules && Array.isArray(hitlData.activeModules)) {
+            setActiveModules(hitlData.activeModules);
+          }
         }
-      }
+      } catch {}
     } catch (err: any) {
       console.error('Chat error:', err);
+      const savedPermanentKey = getStoredClientApiKey();
+      const directFallbackReply = await callClientSideGemini(
+        content,
+        currentMessages.slice(-10),
+        savedPermanentKey,
+        attachments
+      );
+
       const errorMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         agentName: 'Aegis Autonomous AI',
-        content: `Operation processed. Local autonomous synthesis active. System ready for next directive.`,
+        content: directFallbackReply || `Operation processed for Master Lobish. System active.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setSessions(prev =>
