@@ -1,0 +1,14 @@
+// src/ui/copy_handler.js
+const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+        console.log("Ghost Copy: Success");
+    });
+};
+
+// UI Injection
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.createElement('button');
+    btn.innerText = "Copy Output";
+    btn.onclick = () => copyToClipboard(document.body.innerText);
+    document.body.appendChild(btn);
+});
