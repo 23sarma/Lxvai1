@@ -631,9 +631,9 @@ export default function App() {
 
   // AUTHENTICATED GEMINI CHAT MAIN INTERFACE
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 overflow-hidden">
-      {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 md:px-6 py-3 flex items-center justify-between">
+    <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 overflow-hidden fixed inset-0">
+      {/* Top Header - Always Fixed at Top */}
+      <header className="shrink-0 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md z-40 px-4 md:px-6 py-3 flex items-center justify-between shadow-lg">
         {/* Left: Hamburger & Logo */}
         <div className="flex items-center space-x-3">
           <button

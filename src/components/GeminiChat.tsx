@@ -208,9 +208,9 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950 relative overflow-hidden font-sans">
-      {/* ⚡ Live Master-First Priority & Background Preemption Status Banner */}
-      <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+    <div className="flex-1 flex flex-col h-full bg-slate-950 relative overflow-hidden font-sans min-h-0">
+      {/* ⚡ Live Master-First Priority & Background Preemption Status Banner - Fixed & Pinned */}
+      <div className="shrink-0 bg-slate-900/90 border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono z-20">
         <div className="flex items-center space-x-2">
           {isLoading ? (
             <span className="flex items-center space-x-1.5 text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold">
