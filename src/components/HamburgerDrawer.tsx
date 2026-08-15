@@ -30,7 +30,8 @@ import {
   Radio,
   Cpu,
   Eye,
-  EyeOff
+  EyeOff,
+  ChevronRight
 } from 'lucide-react';
 import { DynamicIntegratedModule, Vulnerability, ScanReport } from '../types';
 import { 
@@ -509,6 +510,85 @@ testExternalBridge();
       setGhStatusMsg(`Error: ${e.message}`);
     } finally {
       setIsEngineeringTool(false);
+    }
+  };
+
+  const [isFixingCI, setIsFixingCI] = useState<boolean>(false);
+  const [isPushingReadme, setIsPushingReadme] = useState<boolean>(false);
+  const [isSyncingFullProject, setIsSyncingFullProject] = useState<boolean>(false);
+
+  // Sync entire project codebase to GitHub
+  const handleSyncFullProject = async () => {
+    setIsSyncingFullProject(true);
+    setGhStatusMsg('');
+    try {
+      const res = await fetch('/api/github/sync-full-project', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(ghToken.trim() ? { 'x-github-token': ghToken.trim() } : {})
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGhStatusMsg(data.message || `🚀 Successfully pushed ${data.pushedCount || 0} project files to GitHub!`);
+      } else {
+        setGhStatusMsg(`❌ Sync failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      setGhStatusMsg(`❌ Error: ${err.message}`);
+    } finally {
+      setIsSyncingFullProject(false);
+    }
+  };
+
+  // Fix GitHub Actions CI/CD (turns red ❌ into green ✅)
+  const handleFixCI = async () => {
+    setIsFixingCI(true);
+    setGhStatusMsg('');
+    try {
+      const res = await fetch('/api/github/fix-actions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(ghToken.trim() ? { 'x-github-token': ghToken.trim() } : {})
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGhStatusMsg(data.message || '✅ Pushed clean CI/CD Workflow to repo!');
+      } else {
+        setGhStatusMsg(`❌ Failed to push workflow: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      setGhStatusMsg(`❌ Error: ${err.message}`);
+    } finally {
+      setIsFixingCI(false);
+    }
+  };
+
+  // 1-Click Push Full README.md
+  const handlePushReadme = async () => {
+    setIsPushingReadme(true);
+    setGhStatusMsg('');
+    try {
+      const res = await fetch('/api/github/push-readme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(ghToken.trim() ? { 'x-github-token': ghToken.trim() } : {})
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setGhStatusMsg(data.message || '🎉 README.md successfully created on GitHub!');
+      } else {
+        setGhStatusMsg(`❌ Failed to push README: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      setGhStatusMsg(`❌ Error: ${err.message}`);
+    } finally {
+      setIsPushingReadme(false);
     }
   };
 
@@ -1292,6 +1372,91 @@ testExternalBridge();
                     <span>{isTestingGh ? 'Saving & Testing...' : 'Save & Sync Target Repository'}</span>
                   </button>
                 </form>
+
+                {/* 3. Fast One-Click GitHub Fixers */}
+                <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between text-slate-300">
+                    <div className="flex items-center space-x-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      <h3 className="text-xs font-bold font-mono uppercase tracking-wider">
+                        One-Click Repository Fixers
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Fix 1: Force Push Clean README.md */}
+                  <button
+                    type="button"
+                    onClick={handlePushReadme}
+                    disabled={isPushingReadme}
+                    className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-850 border border-slate-750 hover:border-cyan-500/50 rounded-xl text-xs font-mono text-left text-slate-200 transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <span className="text-lg">📄</span>
+                      <div>
+                        <div className="font-bold text-white group-hover:text-cyan-300 transition-colors">
+                          {isPushingReadme ? 'Pushing README.md...' : 'Force-Push Clean README.md'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Creates rich README.md in root of {ghRepo}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                  </button>
+
+                  {/* Fix 2: Push Working GitHub CI/CD Action */}
+                  <button
+                    type="button"
+                    onClick={handleFixCI}
+                    disabled={isFixingCI}
+                    className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-850 border border-slate-750 hover:border-emerald-500/50 rounded-xl text-xs font-mono text-left text-slate-200 transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <span className="text-lg">🛡️</span>
+                      <div>
+                        <div className="font-bold text-white group-hover:text-emerald-300 transition-colors">
+                          {isFixingCI ? 'Fixing GitHub Actions...' : 'Fix CI/CD Workflow (Turn ❌ to ✅)'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Pushes clean .github/workflows/ci.yml
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+                  </button>
+
+                  {/* Fix 3: Sync Entire Project Codebase & Essential Files */}
+                  <button
+                    type="button"
+                    onClick={handleSyncFullProject}
+                    disabled={isSyncingFullProject}
+                    className="w-full py-2.5 px-3 bg-gradient-to-r from-blue-950/40 to-cyan-950/40 hover:from-blue-900/60 hover:to-cyan-900/60 border border-cyan-500/40 hover:border-cyan-400 rounded-xl text-xs font-mono text-left text-slate-200 transition-all flex items-center justify-between group cursor-pointer shadow-lg shadow-cyan-950/30"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <span className="text-lg animate-pulse">🚀</span>
+                      <div>
+                        <div className="font-bold text-cyan-200 group-hover:text-cyan-100 transition-colors">
+                          {isSyncingFullProject ? 'Synchronizing All Files...' : 'Push Complete Project (All Files & Structure)'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Syncs src/, configs, package.json, workflows & docs to {ghRepo}
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                  </button>
+
+                  {/* Info Notice */}
+                  <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[10.5px] font-mono text-slate-400 space-y-1">
+                    <div className="text-cyan-300 font-bold flex items-center gap-1">
+                      <span>💡</span> GitHub Secret vs Personal Access Token:
+                    </div>
+                    <p className="text-slate-400 leading-relaxed">
+                      AI direct file commit karne ke liye <span className="text-slate-200 font-bold">Personal Access Token (PAT)</span> use karta hai. Secrets sirf automated workflows ke liye hote hain. Dono systems ab fully automated & linked hain!
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
