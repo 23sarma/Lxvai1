@@ -1,6 +1,7 @@
 /**
- * Direct Client-Side GitHub Commit & Push Engine (REST API v3)
- * Full file update, creation, overwrite with automated branch fallback & SHA resolver
+ * Enhanced Direct Client-Side GitHub Commit & Push Engine (REST API v3)
+ * Supports fine-grained tokens (github_pat_), classic tokens (ghp_),
+ * robust UTF-8 encoding, automatic branch fallback & SHA resolver
  */
 
 export interface GitHubFileItem {
@@ -26,6 +27,47 @@ export interface DirectPushResult {
   error?: string;
 }
 
+export function sanitizeGithubToken(raw: string): string {
+  if (!raw) return '';
+  return String(raw)
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '')
+    .replace(/[\r\n\t\f\v]/g, '')
+    .replace(/^["'`]|["'`]$/g, '')
+    .replace(/^(Bearer|token)\s+/i, '')
+    .trim();
+}
+
+/**
+ * Fetch GitHub API with token fallback (Bearer / token header)
+ */
+async function githubFetch(url: string, token: string, options: RequestInit = {}): Promise<Response> {
+  const clean = sanitizeGithubToken(token);
+  const isFineGrained = clean.startsWith('github_pat_');
+  const authHeaders = isFineGrained 
+    ? [`Bearer ${clean}`, `token ${clean}`]
+    : [`Bearer ${clean}`, `token ${clean}`];
+
+  let lastRes: Response | null = null;
+  for (const auth of authHeaders) {
+    const headers: Record<string, string> = {
+      'Authorization': auth,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      ...((options.headers as any) || {})
+    };
+    try {
+      lastRes = await fetch(url, { ...options, headers });
+      if (lastRes.status !== 401) {
+        break;
+      }
+    } catch (e) {
+      // Continue next attempt
+    }
+  }
+
+  return lastRes || new Response(JSON.stringify({ message: 'Network error calling GitHub' }), { status: 500 });
+}
+
 /**
  * Push or update multiple files directly into GitHub Repository
  */
@@ -38,7 +80,7 @@ export async function directPushToGitHub(
   commitMessage: string
 ): Promise<DirectPushResult> {
   const repoUrl = `https://github.com/${owner}/${repo}`;
-  const cleanToken = token ? token.trim().replace(/^['"]|['"]$/g, '') : '';
+  const cleanToken = sanitizeGithubToken(token);
 
   if (!cleanToken) {
     return {
@@ -48,15 +90,9 @@ export async function directPushToGitHub(
       failedFiles: files.map(f => ({ path: f.path, reason: 'GitHub token is missing. Please save it in Menu -> GitHub.' })),
       repoUrl,
       branch: branch || 'main',
-      error: 'GitHub Token missing'
+      error: 'GitHub Token is missing. Please enter your GitHub Personal Access Token in Menu -> GitHub.'
     };
   }
-
-  const headers = {
-    'Authorization': `token ${cleanToken}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json'
-  };
 
   const pushedFiles: string[] = [];
   const detailedReports: PushedFileReport[] = [];
@@ -65,13 +101,13 @@ export async function directPushToGitHub(
   // 1. Determine active branch (check configured branch, then main, then master)
   let activeBranch = branch || 'main';
   try {
-    const branchCheck = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches/${activeBranch}`, { headers });
+    const branchCheck = await githubFetch(`https://api.github.com/repos/${owner}/${repo}/branches/${encodeURIComponent(activeBranch)}`, cleanToken);
     if (!branchCheck.ok) {
-      const mainCheck = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches/main`, { headers });
+      const mainCheck = await githubFetch(`https://api.github.com/repos/${owner}/${repo}/branches/main`, cleanToken);
       if (mainCheck.ok) {
         activeBranch = 'main';
       } else {
-        const masterCheck = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches/master`, { headers });
+        const masterCheck = await githubFetch(`https://api.github.com/repos/${owner}/${repo}/branches/master`, cleanToken);
         if (masterCheck.ok) {
           activeBranch = 'master';
         }
@@ -89,9 +125,9 @@ export async function directPushToGitHub(
 
       // 2. Fetch current file SHA if exists to overwrite/update safely
       try {
-        const getRes = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${activeBranch}`,
-          { headers }
+        const getRes = await githubFetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}?ref=${encodeURIComponent(activeBranch)}`,
+          cleanToken
         );
         if (getRes.ok) {
           const getData = await getRes.json();
@@ -101,10 +137,11 @@ export async function directPushToGitHub(
         // File may be brand new
       }
 
-      // 3. Base64 encode file content safely supporting full UTF-8 emojis & special chars
+      // 3. Robust UTF-8 to Base64 encoding supporting emojis, hindi, and multi-byte characters
       const utf8Bytes = new TextEncoder().encode(file.content);
       let binaryStr = '';
-      for (let i = 0; i < utf8Bytes.length; i++) {
+      const len = utf8Bytes.byteLength;
+      for (let i = 0; i < len; i++) {
         binaryStr += String.fromCharCode(utf8Bytes[i]);
       }
       const base64Content = btoa(binaryStr);
@@ -118,11 +155,11 @@ export async function directPushToGitHub(
         putBody.sha = existingSha;
       }
 
-      const putRes = await fetch(
+      const putRes = await githubFetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
+        cleanToken,
         {
           method: 'PUT',
-          headers,
           body: JSON.stringify(putBody)
         }
       );
