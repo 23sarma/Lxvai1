@@ -16,7 +16,8 @@ import {
   FileCode,
   FileText,
   Terminal,
-  ShieldCheck
+  ShieldCheck,
+  Menu
 } from 'lucide-react';
 import { ChatMessage, AttachedFile } from '../types';
 
@@ -25,6 +26,7 @@ interface GeminiChatProps {
   onSendMessage: (content: string, attachments: AttachedFile[]) => Promise<void>;
   isLoading: boolean;
   onRunInSandbox?: (code: string) => void;
+  onOpenMenu?: () => void;
   repoName: string;
   branchName: string;
 }
@@ -34,6 +36,7 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
   onSendMessage,
   isLoading,
   onRunInSandbox,
+  onOpenMenu,
   repoName,
   branchName
 }) => {
@@ -392,6 +395,17 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
               multiple
               className="hidden"
             />
+
+            {onOpenMenu && (
+              <button
+                type="button"
+                onClick={onOpenMenu}
+                className="p-3 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-400 hover:text-cyan-200 rounded-2xl border border-cyan-500/40 transition-all shrink-0 shadow-md cursor-pointer flex items-center justify-center group"
+                title="Quick Menu (History, Tools, GitHub)"
+              >
+                <Menu className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+            )}
 
             <button
               type="button"
