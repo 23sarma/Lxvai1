@@ -6,24 +6,44 @@ export function autoRepairAndCleanApiKey(rawInput: any): string {
   if (!str) return '';
 
   // Remove zero-width spaces, invisible unicode, HTML entities, and outer quotes
-  str = str.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '').trim();
+  str = str.replace(/[\u200B-\u200D\uFEFF\u00A0\u200E\u200F]/g, '').trim();
   str = str.replace(/^["'`]|["'`]$/g, '').trim();
 
+  // If JSON pasted, extract apiKey, key, token or private_key
+  if (str.includes('{') && str.includes('}')) {
+    try {
+      const parsed = JSON.parse(str);
+      const extracted = parsed.apiKey || parsed.key || parsed.token || parsed.api_key;
+      if (extracted && typeof extracted === 'string') {
+        str = extracted.trim();
+      }
+    } catch {}
+  }
+
   // 1. Precise Regex Extraction for standard Google Gemini API Keys (AIzaSy...)
-  const aizaMatch = str.match(/AIza[0-9A-Za-z-_]{30,45}/);
+  const aizaMatch = str.match(/AIza[0-9A-Za-z-_]{25,60}/);
   if (aizaMatch && aizaMatch[0]) {
     return aizaMatch[0];
   }
 
-  // 2. If embedded in a URL or query string (e.g. key=AIza... or api_key=...)
-  const queryMatch = str.match(/(?:key|api_key|token)=([0-9A-Za-z-_]{25,50})/i);
+  // 2. Bearer token format
+  if (str.startsWith('Bearer ') || str.startsWith('bearer ')) {
+    str = str.slice(7).trim();
+  }
+
+  // 3. If embedded in a URL or query string (e.g. key=AIza... or api_key=...)
+  const queryMatch = str.match(/(?:key|api_key|token|auth)=([0-9A-Za-z-_]{20,80})/i);
   if (queryMatch && queryMatch[1]) {
     return queryMatch[1];
   }
 
-  // 3. General cleanup: strip non-standard characters, spaces, and punctuation
-  str = str.replace(/[\s\r\n\t,;:"'\\/<>]/g, '');
-  return str;
+  // 4. General cleanup: strip non-standard characters, spaces, and punctuation
+  const cleaned = str.replace(/[\s\r\n\t,;:"'\\/<>]/g, '');
+  if (cleaned.length >= 15) {
+    return cleaned;
+  }
+
+  return str.trim();
 }
 
 export function getStoredClientApiKey(): string {

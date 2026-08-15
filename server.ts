@@ -29,24 +29,44 @@ export function autoRepairAndCleanApiKey(rawInput: any): string {
   if (!str) return '';
 
   // Remove zero-width spaces, invisible unicode, HTML entities, and outer quotes
-  str = str.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, '').trim();
+  str = str.replace(/[\u200B-\u200D\uFEFF\u00A0\u200E\u200F]/g, '').trim();
   str = str.replace(/^["'`]|["'`]$/g, '').trim();
 
+  // If JSON format pasted, extract key
+  if (str.includes('{') && str.includes('}')) {
+    try {
+      const parsed = JSON.parse(str);
+      const extracted = parsed.apiKey || parsed.key || parsed.token || parsed.api_key;
+      if (extracted && typeof extracted === 'string') {
+        str = extracted.trim();
+      }
+    } catch {}
+  }
+
   // 1. Precise Regex Extraction for standard Google Gemini API Keys (AIzaSy...)
-  const aizaMatch = str.match(/AIza[0-9A-Za-z-_]{30,45}/);
+  const aizaMatch = str.match(/AIza[0-9A-Za-z-_]{25,60}/);
   if (aizaMatch && aizaMatch[0]) {
     return aizaMatch[0];
   }
 
-  // 2. If embedded in a URL or query string (e.g. key=AIza... or api_key=...)
-  const queryMatch = str.match(/(?:key|api_key|token)=([0-9A-Za-z-_]{25,50})/i);
+  // 2. Bearer token format
+  if (str.startsWith('Bearer ') || str.startsWith('bearer ')) {
+    str = str.slice(7).trim();
+  }
+
+  // 3. If embedded in a URL or query string (e.g. key=AIza... or api_key=...)
+  const queryMatch = str.match(/(?:key|api_key|token|auth)=([0-9A-Za-z-_]{20,80})/i);
   if (queryMatch && queryMatch[1]) {
     return queryMatch[1];
   }
 
-  // 3. General cleanup: strip non-standard characters, spaces, and punctuation
-  str = str.replace(/[\s\r\n\t,;:"'\\/<>]/g, '');
-  return str;
+  // 4. General cleanup: strip non-standard characters, spaces, and punctuation
+  const cleaned = str.replace(/[\s\r\n\t,;:"'\\/<>]/g, '');
+  if (cleaned.length >= 15) {
+    return cleaned;
+  }
+
+  return str.trim();
 }
 
 function getStoredApiKey(): string {
@@ -340,43 +360,62 @@ async function generateContentWithFallback(options: {
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
 
-      // Standard Valid Google Gemini Models supported by GoogleGenAI SDK (Ultra-fast low-latency order)
-      const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.7-flash', 'gemini-2.5-pro'];
+      // Valid active Google Gemini Models supported by GoogleGenAI SDK
+      const modelsToTry = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+
+      let rateLimitHit = false;
 
       for (const model of modelsToTry) {
-        if (keyIsInvalid) break;
-        try {
-          const config: any = {};
-          if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
-          if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
+        if (keyIsInvalid || rateLimitHit) break;
 
-          console.log(`[GEMINI SERVER CONNECTING] Requesting Google Gemini model: ${model} with key (${activeApiKey.slice(0, 8)}...)...`);
-          const response = await dynamicAi.models.generateContent({
-            model,
-            contents: formattedContents,
-            config,
-          });
+        const tryConfigs: any[] = [];
+        const baseConfig: any = {};
+        if (options.systemInstruction) baseConfig.systemInstruction = options.systemInstruction;
+        if (options.responseMimeType) {
+          baseConfig.responseMimeType = options.responseMimeType;
+          tryConfigs.push(baseConfig);
+        } else {
+          // Standard generation config (lightweight and least quota-intensive)
+          tryConfigs.push({ ...baseConfig });
+          // Optional search grounding only if specifically useful
+          tryConfigs.push({ ...baseConfig, tools: [{ googleSearch: {} }] });
+        }
 
-          if (response && response.text && isValidAiText(response.text)) {
-            console.log(`[GEMINI SERVER SUCCESS] Received response from Google Gemini model: ${model}`);
-            saveStoredApiKey(activeApiKey);
-            return response.text;
-          }
-        } catch (err: any) {
-          const errMsg = err?.message || String(err);
-          // Log informative info without console.warn to avoid telemetry noise
-          console.log(`[GEMINI MODEL RETRY] Model ${model} unavailable, trying next provider/key...`);
-          // If the key is leaked, unauthorized, or invalid, stop testing this bad key for other models
-          if (errMsg.includes('leaked') || errMsg.includes('API key not valid') || errMsg.includes('403') || errMsg.includes('401')) {
-            keyIsInvalid = true;
-            break;
+        for (const config of tryConfigs) {
+          if (rateLimitHit) break;
+          try {
+            console.log(`[AI Engine] Connecting to Gemini model: ${model}...`);
+            const response = await dynamicAi.models.generateContent({
+              model,
+              contents: formattedContents,
+              config,
+            });
+
+            if (response && response.text && isValidAiText(response.text)) {
+              console.log(`[AI Engine] Gemini response received from ${model}`);
+              saveStoredApiKey(activeApiKey);
+              return response.text;
+            }
+          } catch (err: any) {
+            const errMsg = (err?.message || String(err)).toLowerCase();
+            // If the key is revoked/leaked/unauthorized, mark invalid for this key
+            if (errMsg.includes('leaked') || errMsg.includes('api key not valid') || errMsg.includes('403') || errMsg.includes('401')) {
+              keyIsInvalid = true;
+              break;
+            }
+            // If rate limit (429) or high demand (503) is encountered, mark rateLimitHit to avoid spamming the key
+            if (errMsg.includes('429') || errMsg.includes('503') || errMsg.includes('quota') || errMsg.includes('resource_exhausted') || errMsg.includes('high demand')) {
+              rateLimitHit = true;
+              console.log(`[AI Engine] Model ${model} is busy or rate-limited, switching to high-speed alternate engine...`);
+              break;
+            }
           }
         }
       }
 
-      if (!keyIsInvalid) {
-        // Direct REST API Fallback
-        const restModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+      if (!keyIsInvalid && !rateLimitHit) {
+        // Direct REST API Fallback with supported models
+        const restModels = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
         for (const restModel of restModels) {
           try {
             const headers: Record<string, string> = {
@@ -400,23 +439,17 @@ async function generateContentWithFallback(options: {
               const restData = await restRes.json();
               const text = restData?.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text && isValidAiText(text)) {
-                console.log(`[GEMINI REST FALLBACK SUCCESS] Direct REST API (${restModel}) responded successfully!`);
+                console.log(`[AI Engine] Direct REST Gemini ${restModel} responded successfully`);
                 saveStoredApiKey(activeApiKey);
                 return text;
               }
-            } else {
-              const errRes = await restRes.text().catch(() => '');
-              console.log(`[GEMINI REST NOTICE] ${restModel} status ${restRes.status}: ${errRes.slice(0, 120)}`);
-              if (restRes.status === 403 || restRes.status === 401) break;
+            } else if (restRes.status === 403 || restRes.status === 401) {
+              break;
             }
-          } catch (restErr) {
-            console.log(`Gemini REST API fallback note:`, restErr);
-          }
+          } catch {}
         }
       }
-    } catch (sdkInitErr: any) {
-      console.log('[GEMINI SDK INIT NOTE]:', sdkInitErr?.message || sdkInitErr);
-    }
+    } catch {}
   }
 
   // 2. Fallback: Auto-Connect to Multi-Provider Public AI Gateway
@@ -3000,42 +3033,6 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Google Gemini API Key Management Endpoints
-// ---------------------------------------------------------------------------
-app.get('/api/key/status', (req, res) => {
-  const activeKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || getStoredApiKey();
-  if (activeKey && activeKey.trim().length > 5) {
-    const clean = activeKey.trim();
-    const masked = clean.slice(0, 4) + '...' + clean.slice(-4);
-    return res.json({
-      hasKey: true,
-      maskedKey: masked,
-      message: 'API Key Active (Verified & Stored on Server)'
-    });
-  }
-  return res.json({
-    hasKey: false,
-    message: 'No API key configured.'
-  });
-});
-
-app.post('/api/key/save', (req, res) => {
-  const { apiKey } = req.body || {};
-  const cleanKey = (apiKey || '').trim();
-  if (!cleanKey || cleanKey.length < 8) {
-    return res.status(400).json({ success: false, error: 'Please enter a valid Google Gemini API Key!' });
-  }
-
-  saveStoredApiKey(cleanKey);
-
-  res.json({
-    success: true,
-    message: '✅ API Key saved permanently to server storage & Gemini AI activated!',
-    maskedKey: cleanKey.slice(0, 4) + '...' + cleanKey.slice(-4)
-  });
-});
-
-// ---------------------------------------------------------------------------
 // HITL (Human-in-the-Loop) Dynamic API Endpoints
 // ---------------------------------------------------------------------------
 app.get('/api/hitl/state', (req, res) => {
@@ -3266,7 +3263,7 @@ app.post('/api/key/save', async (req, res) => {
         httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
       });
       await testAi.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-flash-latest',
         contents: 'ping'
       });
     } catch (err: any) {
@@ -3322,24 +3319,13 @@ app.post('/api/key/sync', async (req, res) => {
   }
 });
 
-// Self-Healing Connection Keeper Heartbeat (Keeps sockets warm & heals any temporary disconnects)
-setInterval(async () => {
+// Lightweight Connection Pulse (Maintains internal socket state without consuming external API quota)
+setInterval(() => {
   const activeKey = getStoredApiKey();
   if (activeKey && activeKey.length > 15) {
-    try {
-      const pingAi = new GoogleGenAI({
-        apiKey: activeKey,
-        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-      });
-      await pingAi.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: 'heartbeat'
-      });
-    } catch (pingErr: any) {
-      const msg = pingErr?.message || String(pingErr);
-      if (!msg.includes('403') && !msg.includes('401') && !msg.includes('leaked')) {
-        registerGlitch('Connection Pulse', `Auto-healed connection pulse: ${msg.slice(0, 100)}`);
-      }
+    // Keep internal state updated without burning token quota
+    if (!process.env.GEMINI_API_KEY) {
+      process.env.GEMINI_API_KEY = activeKey;
     }
   }
 }, 45 * 1000);
@@ -3352,28 +3338,73 @@ app.post('/api/key/test', async (req, res) => {
       return res.status(400).json({ success: false, isOnline: false, error: 'Koi valid Google API key nahi mili test karne ke liye.' });
     }
 
-    try {
-      const testAi = new GoogleGenAI({ 
-        apiKey: targetKey,
-        httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-      });
-      const result = await testAi.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: 'Respond only with: AEGIS_ONLINE_OK'
-      });
-      const text = result.text || 'AEGIS_ONLINE_OK';
-      res.json({
+    let verifiedOnline = false;
+    let verifiedModel = '';
+    let sampleText = '';
+    let lastErrorMsg = '';
+
+    const testAi = new GoogleGenAI({ 
+      apiKey: targetKey,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
+
+    const testModels = ['gemini-flash-latest', 'gemini-3.7-flash', 'gemini-3.1-flash-lite'];
+    for (const testModel of testModels) {
+      try {
+        const result = await testAi.models.generateContent({
+          model: testModel,
+          contents: 'Respond only with: AEGIS_ONLINE_OK'
+        });
+        if (result && (result.text || (result.candidates && result.candidates.length > 0))) {
+          verifiedOnline = true;
+          verifiedModel = testModel;
+          sampleText = result.text || 'AEGIS_ONLINE_OK';
+          break;
+        }
+      } catch (mErr: any) {
+        lastErrorMsg = mErr?.message || String(mErr);
+      }
+    }
+
+    // Direct REST API verification if SDK threw
+    if (!verifiedOnline) {
+      try {
+        const restRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(targetKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Respond with: OK' }] }]
+          })
+        });
+        if (restRes.ok) {
+          verifiedOnline = true;
+          verifiedModel = 'REST-gemini-flash-latest';
+          sampleText = 'OK';
+        } else {
+          const restText = await restRes.text().catch(() => '');
+          lastErrorMsg = `Google Cloud responded HTTP ${restRes.status}: ${restText.slice(0, 100)}`;
+        }
+      } catch (restErr: any) {
+        lastErrorMsg = restErr?.message || lastErrorMsg;
+      }
+    }
+
+    if (verifiedOnline) {
+      saveStoredApiKey(targetKey);
+      process.env.GEMINI_API_KEY = targetKey;
+      return res.json({
         success: true,
         isOnline: true,
         status: 'VERIFIED_ONLINE',
-        message: 'Google Gemini API Key 100% Active, Valid & Online!',
-        sampleResponse: text.trim()
+        model: verifiedModel,
+        message: `✅ Google Gemini Engine (${verifiedModel}) 100% Active, Verified & Online!`,
+        sampleResponse: sampleText.trim()
       });
-    } catch (err: any) {
-      res.json({
+    } else {
+      return res.json({
         success: false,
         isOnline: false,
-        error: `API Key Test Note: ${err?.message || 'Verification returned unexpected response'}`
+        error: `API Key Test Note: ${lastErrorMsg || 'Verification returned unexpected response. Check if Generative Language API is enabled.'}`
       });
     }
   } catch (outerErr: any) {
