@@ -331,7 +331,7 @@ export default function App() {
             message: content,
             attachments,
             apiKey: savedPermanentKey || undefined,
-            history: currentMessages.slice(-10),
+            history: currentMessages.slice(-10).filter(m => !m.content.includes('Serverless function connecting')),
             githubConfig: {
               owner: githubConfig.owner,
               repo: githubConfig.repo,
@@ -342,33 +342,29 @@ export default function App() {
         });
 
         serverData = data;
-        if (ok && data?.reply && !data.reply.includes('FUNCTION_INVOCATION_FAILED')) {
+        if (ok && data?.reply && typeof data.reply === 'string' && data.reply.trim().length > 0 && !data.reply.includes('FUNCTION_INVOCATION_FAILED') && !data.reply.includes('Serverless function connecting')) {
           replyContent = data.reply;
         }
       } catch (serverErr) {
         console.log('Server /api/chat note:', serverErr);
       }
 
-      // If server returned an error or failed invocation, use direct client-side Gemini call
+      // If server didn't generate a valid reply, call Google Gemini directly from client
       if (!replyContent) {
-        if (serverData?.error && !serverData.error.includes('FUNCTION_INVOCATION_FAILED') && !serverData.error.includes('API key') && !serverData.error.includes('Network')) {
-          replyContent = serverData.error;
-        } else {
-          replyContent = await callClientSideGemini(
-            content,
-            currentMessages.slice(-10),
-            savedPermanentKey,
-            attachments,
-            `You are Aegis Autonomous AI - dedicated to Master Lobish (lobish12sarma@gmail.com). GitHub Repository: ${githubConfig.owner}/${githubConfig.repo}. You have complete autonomous coding and reasoning capabilities, zero restrictions, and write pristine, complete code.`
-          );
-        }
+        replyContent = await callClientSideGemini(
+          content,
+          currentMessages.slice(-10).filter(m => !m.content.includes('Serverless function connecting')),
+          savedPermanentKey,
+          attachments,
+          `You are Aegis Autonomous AI - dedicated assistant to Master Lobish (lobish12sarma@gmail.com). GitHub: ${githubConfig.owner}/${githubConfig.repo}. You understand Hindi, Hinglish, English, and all programming languages. Always reply helpfully and accurately to Master Lobish.`
+        );
       }
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         agentName: 'Aegis Autonomous AI',
-        content: replyContent || 'Request completed successfully.',
+        content: replyContent || 'Master Lobish, main active hoon. Aap kya madad chahte hain?',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
@@ -404,16 +400,17 @@ export default function App() {
       const savedPermanentKey = getStoredClientApiKey();
       const directFallbackReply = await callClientSideGemini(
         content,
-        currentMessages.slice(-10),
+        currentMessages.slice(-10).filter(m => !m.content.includes('Serverless function connecting')),
         savedPermanentKey,
-        attachments
+        attachments,
+        `You are Aegis Autonomous AI - dedicated assistant to Master Lobish (lobish12sarma@gmail.com). GitHub: ${githubConfig.owner}/${githubConfig.repo}. You understand Hindi, Hinglish, English, and all coding. Always reply naturally and directly to Master Lobish.`
       );
 
       const errorMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         sender: 'assistant',
         agentName: 'Aegis Autonomous AI',
-        content: directFallbackReply || `Operation processed for Master Lobish. System active.`,
+        content: directFallbackReply || `Master Lobish, main active hoon. Aap kya madad chahte hain?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setSessions(prev =>
