@@ -1277,8 +1277,43 @@ Always honor Master Lobish's directives. Maintain a clean, direct, respectful to
         const targetFilesToPush: { path: string; content: string }[] = [];
 
         // Determine exact functional files based on user directive
+        const isReadmeRequest = msgLower.includes('readme') || msgLower.includes('read me') || msgLower.includes('likho');
         const isUiOrFrontend = msgLower.includes('ui') || msgLower.includes('design') || msgLower.includes('button') || msgLower.includes('color') || msgLower.includes('theme') || msgLower.includes('screen') || msgLower.includes('dashboard') || msgLower.includes('header') || msgLower.includes('chat') || msgLower.includes('app');
         const isBackendOrServer = msgLower.includes('server') || msgLower.includes('backend') || msgLower.includes('api') || msgLower.includes('route') || msgLower.includes('endpoint');
+
+        // If README specifically requested or touched:
+        if (isReadmeRequest || msgLower.includes('readme')) {
+          const readmeContent = `# ${targetRepoName.toUpperCase()} - Autonomous Platform
+
+> **Live Connected Repository for Master Lobish (${activeOwner})**
+> **Current Version:** 1.0.0 Production | **Branch:** \`${branch}\`
+
+---
+
+## 🌟 Overview
+**${targetRepoName}** is an autonomous full-stack AI platform and cyber defense system equipped with real-time GitHub synchronization, self-healing runtime, and autonomous background innovators.
+
+## 🚀 Key Capabilities & Modules
+- ⚡ **Direct GitHub Git Engine:** Real-time bi-directional code pushes and modifications.
+- 🛡️ **Zero-Crash Shield:** Proactive error catching, automatic DOM fallback, and instant memory preservation.
+- 🤖 **Autonomous Innovator Daemon:** Automated development and tool creation.
+- 🧠 **Persistent Neural Vector Memory:** Context memory across sessions.
+- 💬 **Aegis AI Chat Interface:** Interactive coding and engineering interface.
+
+## 🛠️ Tech Stack
+- **Frontend:** React 18, TypeScript, Tailwind CSS, Lucide Icons, Framer Motion
+- **Backend:** Node.js, Express, Vite
+- **AI Core:** Google Gemini 2.5/Flash AI Engine
+
+---
+*Created and maintained autonomously by Aegis AI for Master Lobish.*  
+*Last Updated: ${new Date().toLocaleDateString()} (${new Date().toLocaleTimeString()})*
+`;
+          targetFilesToPush.push({
+            path: 'README.md',
+            content: readmeContent
+          });
+        }
 
         // Extract a clean tool / module name from prompt
         const words = promptMessage.split(' ').map(w => w.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()).filter(w => w.length > 2 && !['and', 'the', 'for', 'with', 'karo', 'bonao', 'banao', 'mujhe', 'nahi', 'karo'].includes(w));
@@ -2264,8 +2299,7 @@ Return ONLY a raw JSON object with schema:
   "description": "Explanation of what this autonomous software module/utility accomplishes",
   "files": [
     { "path": "src/autonomous_modules/${slug}_${timeSeed}.ts", "content": "// Complete TypeScript code for this module..." },
-    { "path": "AEGIS_AI_MEMORY.md", "content": "..." },
-    { "path": "README.md", "content": "..." }
+    { "path": "README.md", "content": "# Project Title\\n\\nComplete documentation..." }
   ]
 }
 No markdown syntax outside JSON.`;
@@ -2290,20 +2324,24 @@ No markdown syntax outside JSON.`;
             content: `// Aegis Autonomous ${category} Engine\n// Generated At: ${new Date().toISOString()}\n\nexport class Autonomous${timeSeed}Engine {\n  static execute() {\n    return { status: 'ONLINE', category: '${category}', timestamp: '${new Date().toISOString()}' };\n  }\n}\n`
           },
           {
-            path: 'AEGIS_AI_MEMORY.md',
-            content: `# Aegis AI - Background Autonomous Neural Memory\n\n**Last Background Innovation Cycle:** ${new Date().toISOString()}\n\n- **Category:** ${category}\n- **Target Repo:** ${owner}/${repo}\n- **Branch:** ${branch}\n`
+            path: 'README.md',
+            content: `# ${repo.toUpperCase()} - Autonomous Platform\n\n> Live Autonomous Platform for ${owner}\n\n### ⚡ Installed Capabilities:\n- **${category}** (\`${moduleFileName}\`)\n- **Status:** Active & Production Ready\n- **Updated:** ${new Date().toISOString()}\n`
           }
         ]
       };
     }
 
-    // 2. Ensure files array exists
-    let filesToPush: { path: string; content: string }[] = project.files || [];
+    // 2. Filter out any dummy memory files if present and ensure clean files
+    let filesToPush: { path: string; content: string }[] = (project.files || []).filter((f: any) => f.path !== 'AEGIS_AI_MEMORY.md');
     if (filesToPush.length === 0) {
       filesToPush = [
         {
           path: moduleFileName,
           content: `// Aegis Autonomous Module: ${project.title}\n// Timestamp: ${new Date().toISOString()}\nexport const moduleInfo = ${JSON.stringify(project, null, 2)};`
+        },
+        {
+          path: 'README.md',
+          content: `# ${repo.toUpperCase()} - Autonomous Platform\n\n> Live Autonomous Platform for ${owner}\n\n### ⚡ Latest Module:\n- **${project.title || category}**\n- **Updated:** ${new Date().toISOString()}\n`
         }
       ];
     }
