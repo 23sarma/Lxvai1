@@ -139,12 +139,16 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
     await onSendMessage(trimmed, currentFiles);
   };
 
-  // Suggestion Chips
+  // Suggestion Chips across all 10 Universal Masteries
   const suggestions = [
-    { label: '🔍 Background me kya kam chal raha hai?', prompt: 'Background me kya kam chal raha hai uska poora biborn aur live status dikhao.' },
-    { label: '💡 Naye AI Tools & Models ka abiskar dikhao', prompt: 'Abhi tak background me kitne naye AI tools, AI models aur systems ka abiskar hua hai?' },
-    { label: '⚡ Naya AI System khud me add karo & GitHub par push karo', prompt: 'Khud me ek naya autonomous AI system add karo aur uske real files bana kar linked GitHub repo me push karo.' },
-    { label: '🛡️ Zero-Crash Shield & Self-Healing Status', prompt: 'Zero-Crash Process Shield aur System Self-Healing status check karo.' }
+    { icon: '🤖', label: 'AI & Software Engineer', desc: 'Full-stack apps, React, APIs & GitHub push', prompt: 'Ek autonomous React + Node.js monitoring dashboard banao aur repo me commit karo.' },
+    { icon: '🔬', label: 'Scientist & Researcher', desc: 'Quantum physics, biology, chemistry & research', prompt: 'Quantum entanglement aur quantum computing ka detailed scientific breakdown aasan bhasha me samjhao.' },
+    { icon: '📐', label: 'Mathematics Expert', desc: 'Calculus, algebra, discrete math & algorithms', prompt: 'Advanced calculus ka step-by-step mathematical problem solution dikhao.' },
+    { icon: '🍳', label: 'Master Chef & Cooking', desc: 'Gourmet recipes, cooking secrets & nutrition', prompt: 'Ek shaandar Hyderabadi Dum Biryani ki exact restaurant-style recipe aur chef secrets batao.' },
+    { icon: '📸', label: 'Photographer & Lighting', desc: 'Camera ISO, aperture, composition & visual prompts', prompt: 'Cinematic portrait photography ke liye exact camera settings aur 3-point lighting setup guide do.' },
+    { icon: '🏦', label: 'Banking & Finance', desc: 'Trading models, fintech systems & compound math', prompt: 'Fintech automated algorithmic trading system aur risk management strategy ka pura model banao.' },
+    { icon: '💖', label: 'Loving Care & Support', desc: 'Unconditional care, health & emotional warmth', prompt: 'Aegis, mujhe thoda stress ho raha hai, mujhe thoda motivate aur care karo.' },
+    { icon: '🛡️', label: 'Zero-Crash & Self-Healing', desc: 'Live background innovations & GitHub sync', prompt: 'Background me kya kam chal raha hai aur abhi tak kitne inventions hue hain?' }
   ];
 
   // Helper to parse code blocks in markdown
@@ -247,27 +251,31 @@ export const GeminiChat: React.FC<GeminiChatProps> = ({
             <div className="p-4 bg-gradient-to-tr from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 rounded-3xl text-cyan-400 shadow-xl shadow-cyan-500/10">
               <Sparkles className="w-10 h-10 animate-pulse" />
             </div>
-            <div className="space-y-2 max-w-md">
+            <div className="space-y-2 max-w-lg">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-cyan-300 text-xs font-mono">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>10 Universal Core Masteries Active in Chat</span>
+              </div>
               <h2 className="text-2xl font-bold tracking-tight text-white">
-                Hello Master Lobish
+                Namaste Master Lobish
               </h2>
-              <p className="text-sm text-slate-400 leading-relaxed font-sans">
-                Aegis AI is connected to <strong className="text-cyan-300">{repoName}</strong> on <strong className="text-slate-200">{branchName}</strong>. Tell me what system, tool, or capability to engineer and commit!
+              <p className="text-xs sm:text-sm text-slate-400 leading-relaxed font-sans">
+                Aegis AI is your <strong>AI Engineer, Scientist, Mathematician, Data Architect, Master Chef, Full-Stack Developer, Photographer, Banking Engineer, Teacher & Caring Companion</strong>. Connected to <strong className="text-cyan-300">{repoName}</strong>. <em>Na bolna hamare niyam me nahi hai — bas aadesh kijiye!</em>
               </p>
             </div>
 
-            {/* Quick Action Suggestions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-xl text-left">
+            {/* Quick Action Suggestions across 10 Masteries */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl text-left">
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}
                   onClick={() => onSendMessage(s.prompt, [])}
-                  className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-2xl text-xs text-slate-300 hover:text-white transition-all shadow-sm flex items-start space-x-2.5 group cursor-pointer"
+                  className="p-3 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 rounded-2xl text-xs text-slate-300 hover:text-white transition-all shadow-sm flex items-start space-x-3 group cursor-pointer"
                 >
-                  <span className="text-base group-hover:scale-110 transition-transform">{s.label.slice(0, 2)}</span>
-                  <div className="space-y-0.5">
-                    <p className="font-semibold text-white group-hover:text-cyan-300 transition-colors">{s.label.slice(2)}</p>
-                    <p className="text-[11px] text-slate-500 line-clamp-1">Auto-creates & pushes to GitHub</p>
+                  <span className="text-xl group-hover:scale-125 transition-transform shrink-0 mt-0.5">{s.icon}</span>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="font-semibold text-white group-hover:text-cyan-300 transition-colors truncate">{s.label}</p>
+                    <p className="text-[11px] text-slate-400 line-clamp-1">{s.desc}</p>
                   </div>
                 </button>
               ))}
